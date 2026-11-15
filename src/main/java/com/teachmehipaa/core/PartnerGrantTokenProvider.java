@@ -1,8 +1,11 @@
 package com.teachmehipaa.core;
 
+import static com.teachmehipaa.core.Arguments.requireNonBlank;
+
 import com.teachmehipaa.AppInfo;
 import com.teachmehipaa.Environment;
 import com.teachmehipaa.OAuth.GrantTokens;
+import com.teachmehipaa.core.AccessTokenCache.CachedToken;
 import com.teachmehipaa.exception.TokenStoreException;
 import java.time.Clock;
 import java.time.Duration;
@@ -11,15 +14,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Access tokens for one Grant, from its rotating Refresh token (ADR-0004).
  *
- * <p>Build one provider per Grant and share it between clients: its lock is what keeps two
- * exchanges of the same Refresh token from racing. Each rotated Refresh token goes to the {@link
- * TokenStore} before its Access token is used, and an exchange is never retried, because replaying
- * a Refresh token the endpoint may already have rotated revokes the Grant.
+ * <p>Build one provider per Grant and share it between clients: its single-flight cache is what
+ * keeps two exchanges of the same Refresh token from racing. Each rotated Refresh token goes to the
+ * {@link TokenStore} before its Access token is used, and an exchange is never retried, because
+ * replaying a Refresh token the endpoint may already have rotated revokes the Grant.
  *
  * <pre>{@code
  * TokenProvider tokens = PartnerGrantTokenProvider.builder()
@@ -31,35 +33,22 @@ import java.util.concurrent.locks.ReentrantLock;
  * }</pre>
  */
 public final class PartnerGrantTokenProvider implements TokenProvider {
-  private static final Duration REMINT_MARGIN = Duration.ofSeconds(60);
-
-  private final ReentrantLock exchangeLock = new ReentrantLock();
+  private final AccessTokenCache cache;
   private final ClientConfig config;
   private final String authorization;
   private final TokenStore tokenStore;
   private final String scope;
-  // Guarded by exchangeLock.
+  // Touched only by exchange(), which the cache runs under its lock.
   private String latestRefreshToken;
-  private volatile CachedToken current;
 
   private PartnerGrantTokenProvider(Builder builder) {
-    this.config =
-        new ClientConfig(
-            builder.baseUrl != null ? builder.baseUrl : builder.environment.baseUrl(),
-            null,
-            builder.scopes,
-            0,
-            builder.timeout,
-            builder.appInfo,
-            builder.httpTransport != null ? builder.httpTransport : new JdkHttpTransport(),
-            builder.clock,
-            Sleeper.SYSTEM,
-            null);
+    this.config = builder.connection.tokenEndpointConfig(builder.scopes, builder.clock);
     this.authorization = TokenEndpoint.basicAuthorization(builder.clientId, builder.clientSecret);
     this.tokenStore = builder.tokenStore;
     // Leaving scope out keeps every Scope the Grant holds.
     this.scope = builder.scopes.isEmpty() ? null : String.join(" ", builder.scopes);
     this.latestRefreshToken = builder.refreshToken;
+    this.cache = new AccessTokenCache(config.clock(), this::exchange);
   }
 
   public static Builder builder() {
@@ -83,40 +72,12 @@ public final class PartnerGrantTokenProvider implements TokenProvider {
    */
   @Override
   public String accessToken() {
-    CachedToken token = current;
-    if (isFresh(token)) {
-      return token.value();
-    }
-    exchangeLock.lock();
-    try {
-      // Whoever held the lock before us may already have exchanged.
-      token = current;
-      if (!isFresh(token)) {
-        token = exchange();
-        current = token;
-      }
-      return token.value();
-    } finally {
-      exchangeLock.unlock();
-    }
+    return cache.accessToken();
   }
 
   @Override
   public void invalidate(String accessToken) {
-    exchangeLock.lock();
-    try {
-      CachedToken token = current;
-      if (token != null && token.value().equals(accessToken)) {
-        current = null;
-      }
-    } finally {
-      exchangeLock.unlock();
-    }
-  }
-
-  private boolean isFresh(CachedToken token) {
-    return token != null
-        && config.clock().instant().isBefore(token.expiresAt().minus(REMINT_MARGIN));
+    cache.invalidate(accessToken);
   }
 
   private CachedToken exchange() {
@@ -146,22 +107,14 @@ public final class PartnerGrantTokenProvider implements TokenProvider {
     return new CachedToken(grant.accessToken(), requestedAt.plus(grant.expiresIn()));
   }
 
-  private record CachedToken(String value, Instant expiresAt) {}
-
   /** Collects settings for a {@link PartnerGrantTokenProvider}. Not thread-safe. */
   public static final class Builder {
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(80);
-
     private String clientId;
     private String clientSecret;
     private TokenStore tokenStore;
     private String refreshToken;
     private List<String> scopes = List.of();
-    private Environment environment = Environment.LIVE;
-    private String baseUrl;
-    private Duration timeout = DEFAULT_TIMEOUT;
-    private AppInfo appInfo;
-    private HttpTransport httpTransport;
+    private ConnectionSettings connection = ConnectionSettings.DEFAULTS;
     private Clock clock = Clock.systemUTC();
 
     private Builder() {}
@@ -209,35 +162,31 @@ public final class PartnerGrantTokenProvider implements TokenProvider {
      * given this provider must use the same Environment and base URL.
      */
     public Builder environment(Environment environment) {
-      this.environment = Objects.requireNonNull(environment, "environment");
+      connection = connection.withEnvironment(environment);
       return this;
     }
 
     /** Overrides the Environment's base URL, for example to point at a mock server. */
     public Builder baseUrl(String baseUrl) {
-      this.baseUrl = BaseUrls.normalize(baseUrl);
+      connection = connection.withBaseUrl(baseUrl);
       return this;
     }
 
     /** How long to wait for the token endpoint. Defaults to 80 seconds. */
     public Builder timeout(Duration timeout) {
-      Objects.requireNonNull(timeout, "timeout");
-      if (timeout.isNegative() || timeout.isZero()) {
-        throw new IllegalArgumentException("timeout must be positive");
-      }
-      this.timeout = timeout;
+      connection = connection.withTimeout(timeout);
       return this;
     }
 
-    /** Your integration's name, version and URL, sent in the {@code User-Agent}. */
+    /** Your software's name, version and URL, sent in the {@code User-Agent}. */
     public Builder appInfo(AppInfo appInfo) {
-      this.appInfo = Objects.requireNonNull(appInfo, "appInfo");
+      connection = connection.withAppInfo(appInfo);
       return this;
     }
 
     /** Replaces the HTTP layer. Defaults to a {@link JdkHttpTransport}. */
     public Builder httpTransport(HttpTransport httpTransport) {
-      this.httpTransport = Objects.requireNonNull(httpTransport, "httpTransport");
+      connection = connection.withHttpTransport(httpTransport);
       return this;
     }
 
@@ -255,14 +204,6 @@ public final class PartnerGrantTokenProvider implements TokenProvider {
         throw new IllegalStateException("clientId, clientSecret and tokenStore are required");
       }
       return new PartnerGrantTokenProvider(this);
-    }
-
-    private static String requireNonBlank(String value, String name) {
-      Objects.requireNonNull(value, name);
-      if (value.isBlank()) {
-        throw new IllegalArgumentException(name + " must not be blank");
-      }
-      return value;
     }
   }
 }

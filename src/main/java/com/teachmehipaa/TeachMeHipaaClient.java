@@ -1,9 +1,11 @@
 package com.teachmehipaa;
 
+import static com.teachmehipaa.core.Arguments.requireNonBlank;
+
 import com.teachmehipaa.core.ApiRequester;
-import com.teachmehipaa.core.BaseUrls;
 import com.teachmehipaa.core.ClientConfig;
 import com.teachmehipaa.core.ClientCredentialsTokenProvider;
+import com.teachmehipaa.core.ConnectionSettings;
 import com.teachmehipaa.core.HttpTransport;
 import com.teachmehipaa.core.JdkHttpTransport;
 import com.teachmehipaa.core.PartnerGrantTokenProvider;
@@ -78,7 +80,7 @@ public final class TeachMeHipaaClient {
   private final ApiRequester requester;
 
   private TeachMeHipaaClient(Builder builder, ClientConfig config) {
-    this.environment = builder.environment;
+    this.environment = builder.connection.environment();
     this.config = config;
     this.requester =
         new ApiRequester(
@@ -213,7 +215,7 @@ public final class TeachMeHipaaClient {
     return config.timeout();
   }
 
-  /** The integration named in the {@code User-Agent}, or {@code null}. */
+  /** The software named in the {@code User-Agent}, or {@code null}. */
   public AppInfo getAppInfo() {
     return config.appInfo();
   }
@@ -223,21 +225,16 @@ public final class TeachMeHipaaClient {
    */
   public static final class Builder {
     private static final int DEFAULT_MAX_RETRIES = 2;
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(80);
 
     private String clientId;
     private String clientSecret;
     private TokenProvider tokenProvider;
-    private Environment environment = Environment.LIVE;
-    private String baseUrl;
+    private ConnectionSettings connection = ConnectionSettings.DEFAULTS;
     private String organizationId;
     private List<String> scopes = List.of();
     private int maxRetries = DEFAULT_MAX_RETRIES;
-    private Duration timeout = DEFAULT_TIMEOUT;
-    private HttpTransport httpTransport;
     private Clock clock = Clock.systemUTC();
     private Sleeper sleeper = Sleeper.SYSTEM;
-    private AppInfo appInfo;
     private RequestLogger logger;
 
     private Builder() {}
@@ -269,13 +266,13 @@ public final class TeachMeHipaaClient {
      * credentials never work against Live.
      */
     public Builder environment(Environment environment) {
-      this.environment = Objects.requireNonNull(environment, "environment");
+      connection = connection.withEnvironment(environment);
       return this;
     }
 
     /** Overrides the Environment's base URL, for example to point at a mock server. */
     public Builder baseUrl(String baseUrl) {
-      this.baseUrl = BaseUrls.normalize(baseUrl);
+      connection = connection.withBaseUrl(baseUrl);
       return this;
     }
 
@@ -309,11 +306,7 @@ public final class TeachMeHipaaClient {
 
     /** How long to wait for each response. Defaults to 80 seconds. */
     public Builder timeout(Duration timeout) {
-      Objects.requireNonNull(timeout, "timeout");
-      if (timeout.isNegative() || timeout.isZero()) {
-        throw new IllegalArgumentException("timeout must be positive");
-      }
-      this.timeout = timeout;
+      connection = connection.withTimeout(timeout);
       return this;
     }
 
@@ -322,7 +315,7 @@ public final class TeachMeHipaaClient {
      * Defaults to a {@link JdkHttpTransport}.
      */
     public Builder httpTransport(HttpTransport httpTransport) {
-      this.httpTransport = Objects.requireNonNull(httpTransport, "httpTransport");
+      connection = connection.withHttpTransport(httpTransport);
       return this;
     }
 
@@ -338,15 +331,15 @@ public final class TeachMeHipaaClient {
       return this;
     }
 
-    /** Your integration's name, version and URL, sent in the {@code User-Agent}. */
+    /** Your software's name, version and URL, sent in the {@code User-Agent}. */
     public Builder appInfo(AppInfo appInfo) {
-      this.appInfo = Objects.requireNonNull(appInfo, "appInfo");
+      connection = connection.withAppInfo(appInfo);
       return this;
     }
 
     /**
-     * Turns on logging: one entry per response with its method, path, status, latency and request
-     * id, never bodies or credentials. Off by default.
+     * Turns on logging: one entry per request with its method, path, status, latency and request
+     * id, or why no response arrived; never bodies or credentials. Off by default.
      */
     public Builder logger(RequestLogger logger) {
       this.logger = Objects.requireNonNull(logger, "logger");
@@ -371,7 +364,7 @@ public final class TeachMeHipaaClient {
       if ((clientId == null) != (clientSecret == null)) {
         throw new IllegalStateException("clientId and clientSecret go together; pass both");
       }
-      String resolvedBaseUrl = baseUrl != null ? baseUrl : environment.baseUrl();
+      String resolvedBaseUrl = connection.resolvedBaseUrl();
       // A Grant's Refresh token works only in its own Environment, and a provider that refreshed
       // against another one would hand the client tokens its API refuses.
       if (tokenProvider instanceof PartnerGrantTokenProvider grant
@@ -389,21 +382,13 @@ public final class TeachMeHipaaClient {
               organizationId,
               scopes,
               maxRetries,
-              timeout,
-              appInfo,
-              httpTransport != null ? httpTransport : new JdkHttpTransport(),
+              connection.timeout(),
+              connection.appInfo(),
+              connection.resolvedTransport(),
               clock,
               sleeper,
               logger);
       return new TeachMeHipaaClient(this, config);
-    }
-
-    private static String requireNonBlank(String value, String name) {
-      Objects.requireNonNull(value, name);
-      if (value.isBlank()) {
-        throw new IllegalArgumentException(name + " must not be blank");
-      }
-      return value;
     }
   }
 }

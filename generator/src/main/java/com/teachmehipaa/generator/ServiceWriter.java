@@ -34,7 +34,7 @@ final class ServiceWriter {
   }
 
   private JavaFile service(Surface.ResourceNode node) {
-    boolean extended = Generator.EXTENDED_RESOURCES.contains(String.join(".", node.path()));
+    boolean extended = HandWritten.extendedResources().contains(String.join(".", node.path()));
     String exposed = node.serviceClass();
     String name = extended ? exposed + "Base" : exposed;
     JavaFile file = new JavaFile(Surface.SERVICE_PACKAGE, name);
@@ -89,7 +89,7 @@ final class ServiceWriter {
           type, "request(request, " + type + ".class, options)", "the {@link " + type + "}");
     }
     if (response instanceof Ir.OperationResponse operation) {
-      String special = Generator.OPERATION_MODELS.get(plan.method().operationId());
+      String special = HandWritten.operationModels().get(plan.method().operationId());
       String type =
           special == null
               ? model(operation.type(), file)
@@ -113,20 +113,12 @@ final class ServiceWriter {
     if (response instanceof Ir.PageResponse) {
       Ir.Pagination pagination = plan.method().pagination();
       String item = model(pagination.itemType(), file);
-      String style =
-          switch (pagination.style()) {
-            case "cursor" -> "cursor";
-            case "after" -> "after";
-            default ->
-                throw new GeneratorException(
-                    plan.where() + ": no rule for pagination style " + pagination.style());
-          };
       return new Returns(
           file.use(CORE + "Page") + "<" + item + ">",
           "requestPage(request, "
               + file.use(CORE + "Pagination")
               + "."
-              + style
+              + pagination.style().coreFactory()
               + "("
               + ModelWriter.literal(pagination.cursorParam())
               + "), "

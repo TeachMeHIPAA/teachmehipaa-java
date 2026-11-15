@@ -59,16 +59,19 @@ Generated from the Developer API document release `waggish-wombat`.
 - `Webhook.constructEvent`, which verifies a Delivery's signature, body hash,
   path and timestamp and returns a typed Event, `UnknownEvent` or Test
   delivery, taking the headers as a `Map` or a lookup such as
-  `request::getHeader`; and `Webhook.generateTestHeaders` for testing
-  handlers.
+  `request::getHeader` and an optional `Webhook.VerifyOptions` (tolerance,
+  arrival time); and `Webhook.generateTestHeaders` for testing handlers.
 - Partner apps: `OAuth` (PKCE pair, state, consent URL, code exchange) and
   `PartnerGrantTokenProvider` with a `TokenStore`, which saves every rotated
   Refresh token before use and never retries a Refresh token exchange. A
   client refuses a provider bound to another Environment or base URL.
 - `events().tail(...)` to read the Event log from a saved position, once or
   following new Events until the thread is interrupted.
-- Opt-in logging through a `RequestLogger`, one entry per response with
-  method, path, status, latency and request id, never bodies, headers or
-  credentials; `AppInfo` in the `User-Agent`; and a pluggable
-  `HttpTransport`.
-- Java 17 or newer. No telemetry and no disk writes.
+- Opt-in logging through a `RequestLogger`, one entry per request with
+  method, path, status, latency and request id, or for a request that got no
+  response a `null` status and an `errorKind` (`TIMEOUT`, `CONNECTION`); never
+  bodies, headers or credentials. `AppInfo` in the `User-Agent`, and a
+  pluggable `HttpTransport`.
+- Java 17 or newer, with `jackson-databind` and `jackson-annotations` as API
+  (compile-scope) dependencies, since public models expose `JsonNode`. No
+  telemetry and no disk writes.

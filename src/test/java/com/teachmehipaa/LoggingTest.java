@@ -12,8 +12,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.teachmehipaa.RequestLogEntry.ErrorKind;
+import com.teachmehipaa.exception.ApiConnectionException;
+import com.teachmehipaa.exception.ApiTimeoutException;
 import com.teachmehipaa.exception.NotFoundException;
 import com.teachmehipaa.param.LearnerRetrieveParams;
+import java.net.ConnectException;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -32,7 +37,7 @@ class LoggingTest {
                 TOKEN_ROUTE,
                 request -> {
                   clock.advance(Duration.ofMillis(40));
-                  return Reply.json(tokenJson("jwt-secret-value"));
+                  return Reply.json(tokenJson("access-token-secret-value"));
                 })
             .on(
                 LEARNER_ROUTE,
@@ -56,7 +61,7 @@ class LoggingTest {
         entries);
     String logged = entries.toString();
     for (String secret :
-        List.of(CLIENT_SECRET, "jwt-secret-value", "ana@example.com", "hipaa-2026")) {
+        List.of(CLIENT_SECRET, "access-token-secret-value", "ana@example.com", "hipaa-2026")) {
       assertFalse(logged.contains(secret), secret);
     }
   }
@@ -66,7 +71,7 @@ class LoggingTest {
     List<RequestLogEntry> entries = new CopyOnWriteArrayList<>();
     FakeTransport api =
         new FakeTransport()
-            .on(TOKEN_ROUTE, Reply.json(tokenJson("jwt")))
+            .on(TOKEN_ROUTE, Reply.json(tokenJson("access-token-1")))
             .on(
                 LEARNER_ROUTE,
                 Reply.problem(
@@ -82,5 +87,68 @@ class LoggingTest {
 
     assertEquals(
         new RequestLogEntry("GET", LEARNER_PATH, 404, Duration.ZERO, "req_404"), entries.get(1));
+  }
+
+  @Test
+  void logsATimeoutWithNoStatusItsLatencyAndTheRequestIdSentBeforeRaising() {
+    FakeClock clock = new FakeClock();
+    List<RequestLogEntry> entries = new CopyOnWriteArrayList<>();
+    FakeTransport api =
+        new FakeTransport()
+            .on(TOKEN_ROUTE, Reply.json(tokenJson("access-token-1")))
+            .on(
+                LEARNER_ROUTE,
+                request -> {
+                  clock.advance(Duration.ofMillis(3_000));
+                  throw new HttpTimeoutException("request timed out");
+                });
+    TeachMeHipaaClient client =
+        clientFor(api)
+            .organizationId(ORG_ID)
+            .maxRetries(0)
+            .clock(clock)
+            .logger(entries::add)
+            .build();
+
+    assertThrows(
+        ApiTimeoutException.class,
+        () ->
+            client
+                .learners()
+                .retrieve(LEARNER_ID, RequestOptions.builder().requestId("acme-sync-42").build()));
+
+    assertEquals(
+        new RequestLogEntry(
+            "GET", LEARNER_PATH, null, Duration.ofMillis(3_000), "acme-sync-42", ErrorKind.TIMEOUT),
+        entries.get(1));
+  }
+
+  @Test
+  void logsEveryAttemptThatGotNoResponseAsAConnectionFailure() {
+    FakeClock clock = new FakeClock();
+    List<RequestLogEntry> entries = new CopyOnWriteArrayList<>();
+    FakeTransport api =
+        new FakeTransport()
+            .on(TOKEN_ROUTE, Reply.json(tokenJson("access-token-1")))
+            .on(
+                LEARNER_ROUTE,
+                request -> {
+                  clock.advance(Duration.ofMillis(15));
+                  throw new ConnectException("Connection refused");
+                });
+    TeachMeHipaaClient client =
+        clientFor(api)
+            .organizationId(ORG_ID)
+            .maxRetries(1)
+            .clock(clock)
+            .logger(entries::add)
+            .build();
+
+    assertThrows(ApiConnectionException.class, () -> client.learners().retrieve(LEARNER_ID));
+
+    RequestLogEntry refused =
+        new RequestLogEntry(
+            "GET", LEARNER_PATH, null, Duration.ofMillis(15), null, ErrorKind.CONNECTION);
+    assertEquals(List.of(refused, refused), entries.subList(1, entries.size()));
   }
 }

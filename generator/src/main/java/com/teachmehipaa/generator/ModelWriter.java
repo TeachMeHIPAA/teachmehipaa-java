@@ -49,7 +49,7 @@ final class ModelWriter {
 
   /** {@code doc} is the class comment, already in Javadoc form, or {@code null}. */
   private JavaFile object(String name, String doc, List<Ir.Field> fields) {
-    boolean extended = Generator.EXTENDED_MODELS.contains(name);
+    boolean extended = HandWritten.extendedModels().contains(name);
     boolean operation = surface.operations.contains(name);
     if (operation != extended) {
       throw new GeneratorException(
@@ -165,16 +165,12 @@ final class ModelWriter {
   }
 
   private String type(Ir.TypeRef ref, boolean primitive, JavaFile file, String where) {
-    if (ref instanceof Ir.Primitive scalar) {
-      return switch (scalar.type()) {
-        case "string" -> "String";
-        case "integer" -> primitive ? "long" : "Long";
-        case "number" -> primitive ? "double" : "Double";
-        case "boolean" -> primitive ? "boolean" : "Boolean";
-        case "dateTime" -> file.use("java.time.OffsetDateTime");
-        case "json" -> file.use("com.fasterxml.jackson.databind.JsonNode");
-        default -> throw new GeneratorException(where + ": no model type for " + scalar.type());
-      };
+    if (ref instanceof Ir.Primitive irPrimitive) {
+      Scalar scalar = Scalar.of(irPrimitive, where);
+      if (scalar == Scalar.BINARY) {
+        throw new GeneratorException(where + ": a model can't hold an uploaded file");
+      }
+      return primitive ? scalar.primitive(file) : scalar.boxed(file);
     }
     if (ref instanceof Ir.Ref named) {
       return file.use(Surface.MODEL_PACKAGE + "." + named.name());

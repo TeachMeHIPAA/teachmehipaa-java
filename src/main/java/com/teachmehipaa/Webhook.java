@@ -92,34 +92,22 @@ public final class Webhook {
    */
   public static WebhookDelivery constructEvent(
       String payload, Map<String, String> headers, String secret, String path) {
-    return constructEvent(payload, headers, secret, path, DEFAULT_TOLERANCE, Instant.now());
+    return constructEvent(payload, headers, secret, path, VerifyOptions.DEFAULTS);
   }
 
   /**
    * Verifies a Delivery and returns its Event, or the Test delivery.
    *
-   * @param payload the raw request body exactly as received; parsed and re-serialized JSON does not
-   *     verify
-   * @param headers the request headers, matched without regard to case
-   * @param secret the Webhook subscription's Signing secret
-   * @param path the path, with its query string, the Delivery was sent to (such as {@code
-   *     /webhooks/tmh?x=1}), or the full request URL; the signature covers it
-   * @param tolerance how far the Delivery's timestamp may be from {@code receivedAt}, in either
-   *     direction
-   * @param receivedAt when the Delivery arrived
-   * @return the verified Delivery: an Event, or a Test delivery
-   * @throws WebhookSignatureException when the Delivery fails verification
-   * @throws IllegalArgumentException when the secret is blank, the path is not a path or URL, or
-   *     the tolerance is not positive
+   * @param options the tolerance and arrival time to check the Delivery's timestamp against
+   * @see #constructEvent(String, Map, String, String)
    */
   public static WebhookDelivery constructEvent(
       String payload,
       Map<String, String> headers,
       String secret,
       String path,
-      Duration tolerance,
-      Instant receivedAt) {
-    return verify(utf8(payload), lookup(headers), secret, path, tolerance, receivedAt);
+      VerifyOptions options) {
+    return verify(utf8(payload), lookup(headers), secret, path, options);
   }
 
   /**
@@ -132,31 +120,22 @@ public final class Webhook {
    */
   public static WebhookDelivery constructEvent(
       String payload, Function<String, String> headers, String secret, String path) {
-    return constructEvent(payload, headers, secret, path, DEFAULT_TOLERANCE, Instant.now());
+    return constructEvent(payload, headers, secret, path, VerifyOptions.DEFAULTS);
   }
 
   /**
-   * Verifies a Delivery whose headers come from a lookup, such as a servlet's {@code
-   * request::getHeader} or Spring's {@code httpHeaders::getFirst}.
+   * Verifies a Delivery whose headers come from a lookup.
    *
-   * @param headers returns a request header's value, or {@code null} when it is absent; it is
-   *     called with lowercase names, so look them up without regard to case
-   * @see #constructEvent(String, Map, String, String, Duration, Instant)
+   * @see #constructEvent(String, Function, String, String)
+   * @see #constructEvent(String, Map, String, String, VerifyOptions)
    */
   public static WebhookDelivery constructEvent(
       String payload,
       Function<String, String> headers,
       String secret,
       String path,
-      Duration tolerance,
-      Instant receivedAt) {
-    return verify(
-        utf8(payload),
-        Objects.requireNonNull(headers, "headers"),
-        secret,
-        path,
-        tolerance,
-        receivedAt);
+      VerifyOptions options) {
+    return verify(utf8(payload), Objects.requireNonNull(headers, "headers"), secret, path, options);
   }
 
   /**
@@ -166,28 +145,22 @@ public final class Webhook {
    */
   public static WebhookDelivery constructEvent(
       byte[] payload, Map<String, String> headers, String secret, String path) {
-    return constructEvent(payload, headers, secret, path, DEFAULT_TOLERANCE, Instant.now());
+    return constructEvent(payload, headers, secret, path, VerifyOptions.DEFAULTS);
   }
 
   /**
    * Verifies a Delivery whose raw body is bytes.
    *
-   * @see #constructEvent(String, Map, String, String, Duration, Instant)
+   * @see #constructEvent(String, Map, String, String, VerifyOptions)
    */
   public static WebhookDelivery constructEvent(
       byte[] payload,
       Map<String, String> headers,
       String secret,
       String path,
-      Duration tolerance,
-      Instant receivedAt) {
+      VerifyOptions options) {
     return verify(
-        Objects.requireNonNull(payload, "payload"),
-        lookup(headers),
-        secret,
-        path,
-        tolerance,
-        receivedAt);
+        Objects.requireNonNull(payload, "payload"), lookup(headers), secret, path, options);
   }
 
   /**
@@ -197,28 +170,26 @@ public final class Webhook {
    */
   public static WebhookDelivery constructEvent(
       byte[] payload, Function<String, String> headers, String secret, String path) {
-    return constructEvent(payload, headers, secret, path, DEFAULT_TOLERANCE, Instant.now());
+    return constructEvent(payload, headers, secret, path, VerifyOptions.DEFAULTS);
   }
 
   /**
    * Verifies a Delivery whose raw body is bytes and whose headers come from a lookup.
    *
-   * @see #constructEvent(String, Function, String, String, Duration, Instant)
+   * @see #constructEvent(String, Function, String, String, VerifyOptions)
    */
   public static WebhookDelivery constructEvent(
       byte[] payload,
       Function<String, String> headers,
       String secret,
       String path,
-      Duration tolerance,
-      Instant receivedAt) {
+      VerifyOptions options) {
     return verify(
         Objects.requireNonNull(payload, "payload"),
         Objects.requireNonNull(headers, "headers"),
         secret,
         path,
-        tolerance,
-        receivedAt);
+        options);
   }
 
   /**
@@ -303,15 +274,12 @@ public final class Webhook {
       Function<String, String> headers,
       String secret,
       String path,
-      Duration tolerance,
-      Instant receivedAt) {
+      VerifyOptions options) {
     checkSecret(secret);
     String signedPath = pathAndQuery(path);
-    Objects.requireNonNull(tolerance, "tolerance");
-    Objects.requireNonNull(receivedAt, "receivedAt");
-    if (tolerance.isNegative() || tolerance.isZero()) {
-      throw new IllegalArgumentException("tolerance must be positive");
-    }
+    Objects.requireNonNull(options, "options");
+    Duration tolerance = options.tolerance;
+    Instant receivedAt = options.receivedAt != null ? options.receivedAt : Instant.now();
 
     String signature = requiredHeader(headers, SIGNATURE_HEADER);
     String timestamp = requiredHeader(headers, TIMESTAMP_HEADER);
@@ -454,6 +422,59 @@ public final class Webhook {
 
   private static byte[] utf8(String payload) {
     return Objects.requireNonNull(payload, "payload").getBytes(StandardCharsets.UTF_8);
+  }
+
+  /**
+   * How {@link #constructEvent(String, Map, String, String, VerifyOptions)} checks a Delivery's
+   * timestamp. Every setting is optional.
+   */
+  public static final class VerifyOptions {
+    static final VerifyOptions DEFAULTS = builder().build();
+
+    private final Duration tolerance;
+    private final Instant receivedAt;
+
+    private VerifyOptions(Builder builder) {
+      this.tolerance = builder.tolerance;
+      this.receivedAt = builder.receivedAt;
+    }
+
+    public static Builder builder() {
+      return new Builder();
+    }
+
+    /** Collects {@link VerifyOptions}. Not thread-safe; the options it builds are. */
+    public static final class Builder {
+      private Duration tolerance = DEFAULT_TOLERANCE;
+      private Instant receivedAt;
+
+      private Builder() {}
+
+      /**
+       * How far the Delivery's timestamp may be from when it arrived, in either direction. Defaults
+       * to {@link Webhook#DEFAULT_TOLERANCE}.
+       *
+       * @throws IllegalArgumentException when {@code tolerance} is not positive
+       */
+      public Builder tolerance(Duration tolerance) {
+        Objects.requireNonNull(tolerance, "tolerance");
+        if (tolerance.isNegative() || tolerance.isZero()) {
+          throw new IllegalArgumentException("tolerance must be positive");
+        }
+        this.tolerance = tolerance;
+        return this;
+      }
+
+      /** When the Delivery arrived. Defaults to the moment it is verified. */
+      public Builder receivedAt(Instant receivedAt) {
+        this.receivedAt = Objects.requireNonNull(receivedAt, "receivedAt");
+        return this;
+      }
+
+      public VerifyOptions build() {
+        return new VerifyOptions(this);
+      }
+    }
   }
 
   /**

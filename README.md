@@ -623,6 +623,49 @@ if (delivery instanceof WebhookDelivery.EventDelivery received
 }
 ```
 
+Pass `Webhook.VerifyOptions` to allow a different tolerance, or to check a
+Delivery your queue stored against when it arrived rather than now:
+
+<!-- sample: webhook-verify-options -->
+```java
+import com.teachmehipaa.Webhook;
+import com.teachmehipaa.WebhookDelivery;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Map;
+
+String payload =
+    """
+    {"eventId": "evt_01JD8M", "eventType": "learner.certified", "orgId": "org_acme",
+     "occurredAt": "2026-11-15T12:00:00.000Z",
+     "data": {"learnerId": "sub_01JD8Z4N3QX5V7W9Y2B4C6D8EG", "email": "ana@example.com",
+              "externalId": "hr-123", "courseId": "hipaa-2026", "status": "certified",
+              "occurredAt": "2026-11-15T12:00:00.000Z"}}
+    """;
+// Recorded by your queue when the Delivery arrived; verified later, from the queue.
+Instant receivedAt = Instant.parse("2026-11-15T12:00:02Z");
+Map<String, String> headers =
+    Webhook.generateTestHeaders(
+        payload,
+        "test-signing-secret",
+        "/webhooks/tmh",
+        Webhook.TestHeaderOptions.builder()
+            .timestamp(Instant.parse("2026-11-15T12:00:00Z"))
+            .build());
+
+WebhookDelivery delivery =
+    Webhook.constructEvent(
+        payload,
+        headers,
+        "test-signing-secret",
+        "/webhooks/tmh",
+        Webhook.VerifyOptions.builder()
+            .receivedAt(receivedAt)
+            .tolerance(Duration.ofMinutes(1))
+            .build());
+System.out.println("verified " + (delivery instanceof WebhookDelivery.EventDelivery));
+```
+
 ## Partner apps
 
 A Partner app acts for many Organizations, each connected through a Grant
@@ -824,9 +867,9 @@ System.out.println(client.getEnvironment() + " " + client.getBaseUrl() + " " + c
 | `organizationId`     | Looked up once with `auth().introspect()`| The Organization to act for                                                         |
 | `maxRetries`         | `2`                                      | Retries of a failed call that is safe to replay                                     |
 | `timeout`            | 80 seconds                               | How long to wait for each response                                                  |
-| `appInfo`            | None                                     | Your integration's name, version and URL, sent in the `User-Agent`                  |
+| `appInfo`            | None                                     | Your software's name, version and URL, sent in the `User-Agent`                  |
 | `httpTransport`      | A `JdkHttpTransport`                     | Sends requests: wrap a configured `HttpClient` (proxy, mTLS) or plug in a test fake |
-| `logger`             | None: nothing is logged                  | A `RequestLogger` that receives one entry per response (see [Logging](#logging))    |
+| `logger`             | None: nothing is logged                  | A `RequestLogger` that receives one entry per request (see [Logging](#logging))     |
 | `clock`, `sleeper`   | The system clock, `Thread.sleep`         | Supply the time and the waits between retries and polls, for tests                  |
 
 Pass either `clientId` and `clientSecret`, or `tokenProvider`, not both;
@@ -840,11 +883,13 @@ on).
 
 The library prints nothing, sends no telemetry and writes nothing to disk.
 Logging is off until you give the client a `RequestLogger`. It then receives
-one `RequestLogEntry` per HTTP response, token requests included, with the
+one `RequestLogEntry` per HTTP request, token requests included, with the
 method, the path (without its query string, which can hold Learner emails),
-the status, the latency and the request id. Request and response bodies,
-headers and credentials are never logged (ADR-0007), because they hold
-Learner details.
+the status, the latency and the request id. A request that got no response is
+logged before its exception is raised, with a `null` status, the request id it
+sent (if any) and an `errorKind` of `TIMEOUT` or `CONNECTION`. Request and
+response bodies, headers and credentials are never logged (ADR-0007), because
+they hold Learner details.
 
 <!-- sample: logging -->
 ```java

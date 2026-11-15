@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
+import com.teachmehipaa.core.Errors;
 import com.teachmehipaa.core.LastResponse;
+import com.teachmehipaa.core.Retries;
 import com.teachmehipaa.exception.ErrorDetails;
 import com.teachmehipaa.exception.FieldError;
 import com.teachmehipaa.exception.OperationFailedException;
@@ -20,7 +22,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Work that may finish after the request that started it, such as an export or a redrive (grilling
@@ -110,14 +111,15 @@ public sealed class Operation extends OperationBase permits WebhookDeliveryOpera
       if (remaining.isZero() || remaining.isNegative()) {
         throw timedOut(latest, timeout);
       }
-      Duration delay = pollDelay(interval, pollNumber);
+      // Backs off like a retry, from the interval up to 10 s.
+      Duration delay = Retries.backoff(interval, MAX_POLL_INTERVAL, pollNumber);
       try {
         requester.sleeper().sleep(delay.compareTo(remaining) < 0 ? delay : remaining);
       } catch (InterruptedException interrupted) {
         Thread.currentThread().interrupt();
         throw new OperationInterruptedException(
             "Interrupted while waiting for Operation " + getName(),
-            details(latest, null, null, null, null, List.of()),
+            details(latest).build(),
             latest,
             interrupted);
       }
@@ -198,24 +200,13 @@ public sealed class Operation extends OperationBase permits WebhookDeliveryOpera
     return !part.isEmpty() && part.chars().noneMatch(Character::isWhitespace);
   }
 
-  // The ceiling doubles from the interval up to 10 s, and jitter picks 50-100 % of it so that many
-  // waiters don't poll in step. Nothing waits less than the interval, and an interval longer than
-  // the cap stays as it is.
-  private static Duration pollDelay(Duration interval, int pollNumber) {
-    double base = interval.toNanos();
-    double cap = Math.max(MAX_POLL_INTERVAL.toNanos(), base);
-    double ceiling = Math.min(base * Math.pow(2, pollNumber - 1), cap);
-    double jittered = ceiling * (0.5 + ThreadLocalRandom.current().nextDouble() * 0.5);
-    return Duration.ofNanos(Math.round(Math.max(base, jittered)));
-  }
-
   /** This finished Operation, or the error it finished with. */
   Operation settled() {
     Problem problem = getError();
     if (problem == null) {
       return this;
     }
-    String summary = join(problem.getTitle(), problem.getDetail());
+    String summary = Errors.join(problem.getTitle(), problem.getDetail());
     List<FieldError> errors =
         problem.getErrors() == null
             ? List.of()
@@ -225,13 +216,13 @@ public sealed class Operation extends OperationBase permits WebhookDeliveryOpera
                 .toList();
     throw new OperationFailedException(
         summary == null ? "Operation " + getName() + " failed" : summary,
-        details(
-            this,
-            problem.getStatus() == 0 ? null : (int) problem.getStatus(),
-            problem.getCode() == null ? null : problem.getCode().value(),
-            problem.getTitle(),
-            problem.getDetail(),
-            errors),
+        details(this)
+            .statusCode(problem.getStatus() == 0 ? null : (int) problem.getStatus())
+            .code(problem.getCode() == null ? null : problem.getCode().value())
+            .title(problem.getTitle())
+            .detail(problem.getDetail())
+            .errors(errors)
+            .build(),
         this);
   }
 
@@ -239,33 +230,15 @@ public sealed class Operation extends OperationBase permits WebhookDeliveryOpera
     String seconds = BigDecimal.valueOf(timeout.toMillis(), 3).stripTrailingZeros().toPlainString();
     return new OperationTimeoutException(
         "Operation " + getName() + " was not done after " + seconds + " s",
-        details(latest, null, null, null, null, List.of()),
+        details(latest).build(),
         latest);
   }
 
-  private static ErrorDetails details(
-      Operation operation,
-      Integer status,
-      String code,
-      String title,
-      String detail,
-      List<FieldError> errors) {
+  // The status stays unset: it would be the last poll's 200, not the Operation's own failure.
+  private static ErrorDetails.Builder details(Operation operation) {
     LastResponse response = operation.getLastResponse();
-    return new ErrorDetails(
-        status,
-        code,
-        title,
-        detail,
-        errors,
-        response == null ? null : response.requestId(),
-        response == null ? null : response.headers(),
-        null);
-  }
-
-  private static String join(String first, String second) {
-    if (first == null) {
-      return second;
-    }
-    return second == null ? first : first + ": " + second;
+    return response == null
+        ? ErrorDetails.builder()
+        : ErrorDetails.builder().requestId(response.requestId()).headers(response.headers());
   }
 }

@@ -5,7 +5,6 @@ import com.teachmehipaa.OAuth.GrantTokens;
 import com.teachmehipaa.exception.ApiConnectionException;
 import com.teachmehipaa.exception.ApiException;
 import com.teachmehipaa.exception.ApiTimeoutException;
-import com.teachmehipaa.exception.ErrorDetails;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
@@ -84,7 +83,7 @@ public final class GrantExchange {
       throw new ApiConnectionException(
           Errors.withGuidance(noResponse.getMessage(), networkFailure), noResponse.getCause());
     }
-    if (response.statusCode() / 100 != 2) {
+    if (!Errors.isSuccess(response.statusCode())) {
       throw Errors.fromOAuthError(response, config.clock().instant(), invalidGrant);
     }
     if (!Errors.isJson(response)) {
@@ -123,15 +122,7 @@ public final class GrantExchange {
   private static ApiException notAGrant(TransportResponse response) {
     return new ApiException(
         "The token endpoint answered without an access_token, refresh_token and expires_in",
-        new ErrorDetails(
-            response.statusCode(),
-            null,
-            null,
-            null,
-            null,
-            response.headers().firstValue("x-request-id").orElse(null),
-            response.headers(),
-            null));
+        Errors.withoutBody(response).build());
   }
 
   private GrantExchange() {}

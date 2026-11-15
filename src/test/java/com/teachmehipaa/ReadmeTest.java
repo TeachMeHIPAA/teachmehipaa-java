@@ -361,6 +361,7 @@ class ReadmeTest {
           Map.entry("webhook-spring", ReadmeTest::webhookSpring),
           Map.entry("webhook-servlet", ReadmeTest::webhookServlet),
           Map.entry("webhook-test-headers", ReadmeTest::webhookTestHeaders),
+          Map.entry("webhook-verify-options", ReadmeTest::webhookVerifyOptions),
           Map.entry("partner-consent", ReadmeTest::partnerConsent),
           Map.entry("partner-grant", ReadmeTest::partnerGrant),
           Map.entry("partner-organizations", ReadmeTest::partnerOrganizations),
@@ -637,6 +638,12 @@ class ReadmeTest {
     run("webhook-test-headers");
 
     assertEquals(List.of("certified " + LEARNER_ID), printed());
+  }
+
+  private void webhookVerifyOptions() throws Exception {
+    run("webhook-verify-options");
+
+    assertEquals(List.of("verified true"), printed());
   }
 
   private void partnerConsent() throws Exception {

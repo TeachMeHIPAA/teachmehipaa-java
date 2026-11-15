@@ -1,7 +1,5 @@
 package com.teachmehipaa.core;
 
-import java.util.Objects;
-
 /**
  * Sends an Access token you obtained yourself, as is. It is never renewed and never touches the
  * token endpoint: once the token expires or is revoked, calls raise {@code
@@ -11,11 +9,7 @@ public final class StaticTokenProvider implements TokenProvider {
   private final String accessToken;
 
   public StaticTokenProvider(String accessToken) {
-    Objects.requireNonNull(accessToken, "accessToken");
-    if (accessToken.isBlank()) {
-      throw new IllegalArgumentException("accessToken must not be blank");
-    }
-    this.accessToken = accessToken;
+    this.accessToken = Arguments.requireNonBlank(accessToken, "accessToken");
   }
 
   @Override

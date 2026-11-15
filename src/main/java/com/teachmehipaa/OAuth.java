@@ -1,11 +1,11 @@
 package com.teachmehipaa;
 
-import com.teachmehipaa.core.BaseUrls;
-import com.teachmehipaa.core.ClientConfig;
+import static com.teachmehipaa.core.Arguments.requireNonBlank;
+
+import com.teachmehipaa.core.ConnectionSettings;
 import com.teachmehipaa.core.GrantExchange;
 import com.teachmehipaa.core.HttpTransport;
 import com.teachmehipaa.core.JdkHttpTransport;
-import com.teachmehipaa.core.Sleeper;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -116,20 +116,8 @@ public final class OAuth {
    */
   public static GrantTokens exchangeCode(ExchangeCodeParams params) {
     Objects.requireNonNull(params, "params");
-    ClientConfig config =
-        new ClientConfig(
-            params.baseUrl != null ? params.baseUrl : params.environment.baseUrl(),
-            null,
-            List.of(),
-            0,
-            params.timeout,
-            params.appInfo,
-            params.httpTransport != null ? params.httpTransport : new JdkHttpTransport(),
-            Clock.systemUTC(),
-            Sleeper.SYSTEM,
-            null);
     return GrantExchange.exchangeCode(
-        config,
+        params.connection.tokenEndpointConfig(List.of(), Clock.systemUTC()),
         params.clientId,
         params.clientSecret,
         params.code,
@@ -162,18 +150,12 @@ public final class OAuth {
 
   /** What {@link #exchangeCode} sends. Immutable. */
   public static final class ExchangeCodeParams {
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(80);
-
     private final String clientId;
     private final String clientSecret;
     private final String code;
     private final String redirectUri;
     private final String codeVerifier;
-    private final Environment environment;
-    private final String baseUrl;
-    private final Duration timeout;
-    private final AppInfo appInfo;
-    private final HttpTransport httpTransport;
+    private final ConnectionSettings connection;
 
     private ExchangeCodeParams(Builder builder) {
       this.clientId = builder.clientId;
@@ -181,11 +163,7 @@ public final class OAuth {
       this.code = builder.code;
       this.redirectUri = builder.redirectUri;
       this.codeVerifier = builder.codeVerifier;
-      this.environment = builder.environment;
-      this.baseUrl = builder.baseUrl;
-      this.timeout = builder.timeout;
-      this.appInfo = builder.appInfo;
-      this.httpTransport = builder.httpTransport;
+      this.connection = builder.connection;
     }
 
     public static Builder builder() {
@@ -198,11 +176,7 @@ public final class OAuth {
       private String code;
       private String redirectUri;
       private String codeVerifier;
-      private Environment environment = Environment.LIVE;
-      private String baseUrl;
-      private Duration timeout = DEFAULT_TIMEOUT;
-      private AppInfo appInfo;
-      private HttpTransport httpTransport;
+      private ConnectionSettings connection = ConnectionSettings.DEFAULTS;
 
       private Builder() {}
 
@@ -238,35 +212,31 @@ public final class OAuth {
 
       /** Which deployment the Partner app belongs to. Defaults to {@link Environment#LIVE}. */
       public Builder environment(Environment environment) {
-        this.environment = Objects.requireNonNull(environment, "environment");
+        connection = connection.withEnvironment(environment);
         return this;
       }
 
       /** Overrides the Environment's base URL, for example to point at a mock server. */
       public Builder baseUrl(String baseUrl) {
-        this.baseUrl = BaseUrls.normalize(baseUrl);
+        connection = connection.withBaseUrl(baseUrl);
         return this;
       }
 
       /** How long to wait for the response. Defaults to 80 seconds. */
       public Builder timeout(Duration timeout) {
-        Objects.requireNonNull(timeout, "timeout");
-        if (timeout.isNegative() || timeout.isZero()) {
-          throw new IllegalArgumentException("timeout must be positive");
-        }
-        this.timeout = timeout;
+        connection = connection.withTimeout(timeout);
         return this;
       }
 
-      /** Your integration's name, version and URL, sent in the {@code User-Agent}. */
+      /** Your software's name, version and URL, sent in the {@code User-Agent}. */
       public Builder appInfo(AppInfo appInfo) {
-        this.appInfo = Objects.requireNonNull(appInfo, "appInfo");
+        connection = connection.withAppInfo(appInfo);
         return this;
       }
 
       /** Replaces the HTTP layer. Defaults to a {@link JdkHttpTransport}. */
       public Builder httpTransport(HttpTransport httpTransport) {
-        this.httpTransport = Objects.requireNonNull(httpTransport, "httpTransport");
+        connection = connection.withHttpTransport(httpTransport);
         return this;
       }
 
@@ -325,7 +295,7 @@ public final class OAuth {
         return this;
       }
 
-      /** One of the app's registered redirect URIs, matched exactly. Required. */
+      /** One of your Partner app's registered redirect URIs, matched exactly. Required. */
       public Builder redirectUri(String redirectUri) {
         this.redirectUri = requireNonBlank(redirectUri, "redirectUri");
         return this;
@@ -408,14 +378,6 @@ public final class OAuth {
 
   private static String encode(String value) {
     return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
-  }
-
-  private static String requireNonBlank(String value, String name) {
-    Objects.requireNonNull(value, name);
-    if (value.isBlank()) {
-      throw new IllegalArgumentException(name + " must not be blank");
-    }
-    return value;
   }
 
   private static String requireAbsoluteUrl(String value, String name) {

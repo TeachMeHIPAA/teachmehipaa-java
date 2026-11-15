@@ -31,9 +31,11 @@ public final class ApiRequester {
   // What a response must be for the call to use it; anything else raises. Unknown paths answer
   // with a 200 HTML page, so a success is only read once its content type says what it is.
   private static final Predicate<TransportResponse> JSON =
-      response -> isSuccess(response) && Errors.isJson(response);
+      response -> Errors.isSuccess(response.statusCode()) && Errors.isJson(response);
   private static final Predicate<TransportResponse> JSON_OR_EMPTY =
-      response -> isSuccess(response) && (Errors.isJson(response) || response.body().length == 0);
+      response ->
+          Errors.isSuccess(response.statusCode())
+              && (Errors.isJson(response) || response.body().length == 0);
   private static final Predicate<TransportResponse> JSON_OR_NOT_MODIFIED =
       response -> response.statusCode() == 304 || JSON.test(response);
 
@@ -170,7 +172,8 @@ public final class ApiRequester {
             download(request, mediaType),
             options,
             candidate ->
-                isSuccess(candidate) && Errors.hasMediaType(candidate.headers(), mediaType));
+                Errors.isSuccess(candidate.statusCode())
+                    && Errors.hasMediaType(candidate.headers(), mediaType));
     return new BinaryResponse(response.body(), LastResponse.of(response));
   }
 
@@ -380,7 +383,8 @@ public final class ApiRequester {
   private StreamingTransportResponse exchangeStreaming(
       TransportRequest authorized, String mediaType) {
     StreamingTransportResponse response = Transport.sendStreaming(config, authorized);
-    if (response.statusCode() / 100 == 2 && Errors.hasMediaType(response.headers(), mediaType)) {
+    if (Errors.isSuccess(response.statusCode())
+        && Errors.hasMediaType(response.headers(), mediaType)) {
       return response;
     }
     TransportResponse failed;
@@ -392,10 +396,6 @@ public final class ApiRequester {
       throw Errors.noResponse(authorized, unreadable);
     }
     throw Errors.fromResponse(failed, config.clock().instant());
-  }
-
-  private static boolean isSuccess(TransportResponse response) {
-    return response.statusCode() / 100 == 2;
   }
 
   private static ObjectNode bodyFields(ApiRequest request) {

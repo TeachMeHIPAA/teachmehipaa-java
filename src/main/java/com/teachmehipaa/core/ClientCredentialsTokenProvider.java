@@ -1,12 +1,11 @@
 package com.teachmehipaa.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.teachmehipaa.core.AccessTokenCache.CachedToken;
 import com.teachmehipaa.exception.TeachMeHipaaException;
 import java.io.IOException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Mints Access tokens with the OAuth client-credentials grant, authenticating with the API client's
@@ -15,10 +14,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * retried like any request, since each one mints a fresh token.
  */
 public final class ClientCredentialsTokenProvider implements TokenProvider {
-  private static final Duration REMINT_MARGIN = Duration.ofSeconds(60);
-
-  private final ReentrantLock mintLock = new ReentrantLock();
-  private volatile CachedToken current;
+  private final AccessTokenCache cache;
   private final String authorization;
   private final String form;
   private final ClientConfig config;
@@ -34,44 +30,17 @@ public final class ClientCredentialsTokenProvider implements TokenProvider {
       body += "&scope=" + TokenEndpoint.formEncode(String.join(" ", config.scopes()));
     }
     this.form = body;
+    this.cache = new AccessTokenCache(config.clock(), this::mint);
   }
 
   @Override
   public String accessToken() {
-    CachedToken token = current;
-    if (isFresh(token)) {
-      return token.value();
-    }
-    mintLock.lock();
-    try {
-      // Whoever held the lock before us may already have minted.
-      token = current;
-      if (!isFresh(token)) {
-        token = mint();
-        current = token;
-      }
-      return token.value();
-    } finally {
-      mintLock.unlock();
-    }
+    return cache.accessToken();
   }
 
   @Override
   public void invalidate(String accessToken) {
-    mintLock.lock();
-    try {
-      CachedToken token = current;
-      if (token != null && token.value().equals(accessToken)) {
-        current = null;
-      }
-    } finally {
-      mintLock.unlock();
-    }
-  }
-
-  private boolean isFresh(CachedToken token) {
-    return token != null
-        && config.clock().instant().isBefore(token.expiresAt().minus(REMINT_MARGIN));
+    cache.invalidate(accessToken);
   }
 
   private CachedToken mint() {
@@ -111,7 +80,7 @@ public final class ClientCredentialsTokenProvider implements TokenProvider {
   }
 
   private static JsonNode tokenBody(TransportResponse response) {
-    if (response.statusCode() / 100 != 2 || !Errors.isJson(response)) {
+    if (!Errors.isSuccess(response.statusCode()) || !Errors.isJson(response)) {
       return null;
     }
     try {
@@ -123,6 +92,4 @@ public final class ClientCredentialsTokenProvider implements TokenProvider {
       return null;
     }
   }
-
-  private record CachedToken(String value, Instant expiresAt) {}
 }

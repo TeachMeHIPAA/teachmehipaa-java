@@ -1,5 +1,6 @@
 package com.teachmehipaa;
 
+import com.teachmehipaa.core.Arguments;
 import java.time.Duration;
 import java.util.Objects;
 
@@ -93,11 +94,7 @@ public final class RequestOptions {
      * safe to replay, such as a PATCH, retryable.
      */
     public Builder idempotencyKey(String idempotencyKey) {
-      Objects.requireNonNull(idempotencyKey, "idempotencyKey");
-      if (idempotencyKey.isBlank()) {
-        throw new IllegalArgumentException("idempotencyKey must not be blank");
-      }
-      this.idempotencyKey = idempotencyKey;
+      this.idempotencyKey = Arguments.requireNonBlank(idempotencyKey, "idempotencyKey");
       return this;
     }
 

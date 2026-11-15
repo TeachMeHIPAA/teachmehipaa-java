@@ -1,5 +1,6 @@
 package com.teachmehipaa.generator;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -92,7 +93,32 @@ record Ir(
   record WriteResultResponse(TypeRef type, TypeRef existing, TypeRef created) implements Response {}
 
   record Pagination(
-      String style, String cursorParam, String limitParam, int maxLimit, TypeRef itemType) {}
+      PaginationStyle style,
+      String cursorParam,
+      String limitParam,
+      int maxLimit,
+      TypeRef itemType) {}
+
+  /** How a list's next page is asked for; each style has a factory of the same name in core. */
+  enum PaginationStyle {
+    /** The response's {@code nextCursor} goes back as the cursor param. */
+    @JsonProperty("cursor")
+    CURSOR("cursor"),
+    /** The last item's id goes back as the cursor param. */
+    @JsonProperty("after")
+    AFTER("after");
+
+    private final String coreFactory;
+
+    PaginationStyle(String coreFactory) {
+      this.coreFactory = coreFactory;
+    }
+
+    /** The {@code com.teachmehipaa.core.Pagination} factory method for this style. */
+    String coreFactory() {
+      return coreFactory;
+    }
+  }
 
   @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
   @JsonSubTypes({

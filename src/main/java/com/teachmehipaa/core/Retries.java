@@ -6,10 +6,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** When to retry a failed attempt, and how long to wait first (grilling Q18). */
-final class Retries {
-  private static final long INITIAL_DELAY_MILLIS = 500;
-  private static final long MAX_DELAY_MILLIS = 5_000;
+/**
+ * When to retry a failed attempt, and how long to wait first (grilling Q18). Internal: only {@link
+ * #backoff} is shared outside this package, so Operation polling backs off the same way.
+ */
+public final class Retries {
+  private static final Duration INITIAL_DELAY = Duration.ofMillis(500);
+  private static final Duration MAX_DELAY = Duration.ofSeconds(5);
   private static final Duration MAX_RETRY_AFTER = Duration.ofSeconds(60);
 
   /** Failures that leave no trace on the server, or that it asks us to retry. */
@@ -26,16 +29,22 @@ final class Retries {
     if (retryAfter != null) {
       return retryAfter.compareTo(MAX_RETRY_AFTER) > 0 ? MAX_RETRY_AFTER : retryAfter;
     }
-    return backoff(retryNumber);
+    // Stripe's schedule: 0.5 s doubling to 5 s.
+    return backoff(INITIAL_DELAY, MAX_DELAY, retryNumber);
   }
 
-  // Stripe's schedule: the ceiling doubles from 0.5 s to 5 s, jitter picks 50-100 % of it, and
-  // nothing waits less than 0.5 s.
-  private static Duration backoff(int retryNumber) {
-    long ceiling = INITIAL_DELAY_MILLIS << Math.min(retryNumber - 1, 10);
-    ceiling = Math.min(ceiling, MAX_DELAY_MILLIS);
+  /**
+   * How long to wait before attempt {@code attemptNumber} (1 for the first wait): the ceiling
+   * doubles from {@code initial} up to {@code max}, and jitter picks 50-100 % of it so that many
+   * waiters don't retry in step. Nothing waits less than {@code initial}, and an {@code initial}
+   * longer than {@code max} stays as it is.
+   */
+  public static Duration backoff(Duration initial, Duration max, int attemptNumber) {
+    double base = initial.toNanos();
+    double cap = Math.max(max.toNanos(), base);
+    double ceiling = Math.min(base * Math.pow(2, attemptNumber - 1), cap);
     double jittered = ceiling * (0.5 + ThreadLocalRandom.current().nextDouble() * 0.5);
-    return Duration.ofMillis(Math.max(INITIAL_DELAY_MILLIS, Math.round(jittered)));
+    return Duration.ofNanos(Math.round(Math.max(base, jittered)));
   }
 
   /**

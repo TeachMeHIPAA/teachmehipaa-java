@@ -94,7 +94,7 @@ class TokenProviderOptionTest {
 
   @Test
   void aTokenProviderCannotBeCombinedWithCredentialsOrScopes() {
-    StaticTokenProvider tokens = new StaticTokenProvider("jwt");
+    StaticTokenProvider tokens = new StaticTokenProvider("access-token-static");
 
     for (TeachMeHipaaClient.Builder conflicting :
         List.of(

@@ -25,10 +25,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-/** Turns failed responses into exceptions. Bodies are kept on the exception, never logged. */
-final class Errors {
+/**
+ * Turns failed responses into exceptions. Bodies are kept on the exception, never logged. Internal:
+ * only {@link #join} is shared outside this package.
+ */
+public final class Errors {
   private static final Pattern JSON_CONTENT_TYPE =
       Pattern.compile("^application/([\\w.+-]*\\+)?json\\b", Pattern.CASE_INSENSITIVE);
+
+  /** Whether {@code status} is a 2xx. */
+  static boolean isSuccess(int status) {
+    return status / 100 == 2;
+  }
 
   /**
    * Unknown paths answer with a 200 HTML page, so a body is only parsed after its content type says
@@ -61,9 +69,15 @@ final class Errors {
     String code = text(problem, "code");
     String summary = join(title, detail);
     String message = summary == null ? fallbackMessage(response) : summary;
-    ErrorDetails details = details(response, code, title, detail, fieldErrors(problem));
+    ErrorDetails details =
+        withBody(response)
+            .code(code)
+            .title(title)
+            .detail(detail)
+            .errors(fieldErrors(problem))
+            .build();
     int status = response.statusCode();
-    if (status / 100 == 2) {
+    if (isSuccess(status)) {
       return new ApiException(message, details);
     }
     return switch (status) {
@@ -107,7 +121,7 @@ final class Errors {
     if (invalidGrantGuidance != null && "invalid_grant".equals(code)) {
       message = withGuidance(message, invalidGrantGuidance);
     }
-    return new OAuthException(message, details(response, code, null, detail, null));
+    return new OAuthException(message, withBody(response).code(code).detail(detail).build());
   }
 
   /** Appends what only the caller can do about a failure to its message. */
@@ -118,9 +132,7 @@ final class Errors {
   /** A success that claimed JSON but could not be read as what the call returns. */
   static TeachMeHipaaException unparseable(TransportResponse response, IOException cause) {
     return new ApiException(
-        "Could not read the TeachMeHIPAA API response as JSON",
-        details(response, null, null, null, null),
-        cause);
+        "Could not read the TeachMeHIPAA API response as JSON", withBody(response).build(), cause);
   }
 
   static TeachMeHipaaException noResponse(TransportRequest request, IOException cause) {
@@ -135,24 +147,19 @@ final class Errors {
 
   /** A response that is valid JSON but breaks a promise the API makes. */
   static TeachMeHipaaException unexpected(TransportResponse response, String message) {
-    return new TeachMeHipaaException(message, details(response, null, null, null, null));
+    return new TeachMeHipaaException(message, withBody(response).build());
   }
 
-  private static ErrorDetails details(
-      TransportResponse response,
-      String code,
-      String title,
-      String detail,
-      List<FieldError> errors) {
-    return new ErrorDetails(
-        response.statusCode(),
-        code,
-        title,
-        detail,
-        errors,
-        response.headers().firstValue("x-request-id").orElse(null),
-        response.headers(),
-        new String(response.body(), StandardCharsets.UTF_8));
+  /** Details of {@code response}'s status and headers, without its body. */
+  static ErrorDetails.Builder withoutBody(TransportResponse response) {
+    return ErrorDetails.builder()
+        .statusCode(response.statusCode())
+        .requestId(response.headers().firstValue("x-request-id").orElse(null))
+        .headers(response.headers());
+  }
+
+  private static ErrorDetails.Builder withBody(TransportResponse response) {
+    return withoutBody(response).rawBody(new String(response.body(), StandardCharsets.UTF_8));
   }
 
   private static String fallbackMessage(TransportResponse response) {
@@ -199,7 +206,8 @@ final class Errors {
     return value != null && value.isTextual() ? value.asText() : null;
   }
 
-  private static String join(String first, String second) {
+  /** {@code "first: second"}, or whichever of the two is not {@code null}. */
+  public static String join(String first, String second) {
     if (first == null) {
       return second;
     }

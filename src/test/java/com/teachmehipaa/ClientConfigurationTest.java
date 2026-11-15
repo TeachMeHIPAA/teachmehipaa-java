@@ -129,7 +129,7 @@ class ClientConfigurationTest {
   }
 
   @Test
-  void identifiesTheSdkAndAppInTheUserAgent() {
+  void identifiesTheSdkAndYourSoftwareInTheUserAgent() {
     FakeTransport api = learnerRetrieveApi();
 
     clientFor(api)

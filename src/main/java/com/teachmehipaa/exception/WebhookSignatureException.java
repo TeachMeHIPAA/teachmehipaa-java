@@ -1,7 +1,5 @@
 package com.teachmehipaa.exception;
 
-import java.util.List;
-
 /**
  * A Delivery failed verification: it was not signed with the Signing secret for this request, or it
  * arrived outside the tolerance. Answer it with a 4xx and do not act on it.
@@ -32,6 +30,6 @@ public class WebhookSignatureException extends TeachMeHipaaException {
    * @param message what went wrong and what to check
    */
   public WebhookSignatureException(String code, String message) {
-    super(message, new ErrorDetails(null, code, null, null, List.of(), null, null, null));
+    super(message, ErrorDetails.builder().code(code).build());
   }
 }

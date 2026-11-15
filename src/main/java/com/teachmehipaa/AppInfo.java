@@ -1,20 +1,17 @@
 package com.teachmehipaa;
 
-import java.util.Objects;
+import com.teachmehipaa.core.Arguments;
 
 /**
- * Identifies your integration to TeachMeHIPAA in the {@code User-Agent} header.
+ * Identifies your software to TeachMeHIPAA in the {@code User-Agent} header.
  *
- * @param name your integration's name, such as {@code AcmeHR}
+ * @param name your software's name, such as {@code AcmeHR}
  * @param version its version, or {@code null}
  * @param url a URL for it, or {@code null}
  */
 public record AppInfo(String name, String version, String url) {
   public AppInfo {
-    Objects.requireNonNull(name, "name");
-    if (name.isBlank()) {
-      throw new IllegalArgumentException("name must not be blank");
-    }
+    Arguments.requireNonBlank(name, "name");
   }
 
   public static AppInfo of(String name) {

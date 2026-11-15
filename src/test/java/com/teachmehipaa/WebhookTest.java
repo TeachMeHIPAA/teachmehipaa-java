@@ -95,8 +95,12 @@ class WebhookTest {
     return headers;
   }
 
+  private static Webhook.VerifyOptions at(Instant receivedAt) {
+    return Webhook.VerifyOptions.builder().receivedAt(receivedAt).build();
+  }
+
   private static WebhookSignatureException rejection(String payload, Map<String, String> headers) {
-    return rejection(payload, headers, SECRET, PATH, Webhook.DEFAULT_TOLERANCE, AT_EVENT_TIME);
+    return rejection(payload, headers, SECRET, PATH, at(AT_EVENT_TIME));
   }
 
   private static WebhookSignatureException rejection(
@@ -104,12 +108,11 @@ class WebhookTest {
       Map<String, String> headers,
       String secret,
       String path,
-      Duration tolerance,
-      Instant receivedAt) {
+      Webhook.VerifyOptions options) {
     WebhookSignatureException error =
         assertThrows(
             WebhookSignatureException.class,
-            () -> Webhook.constructEvent(payload, headers, secret, path, tolerance, receivedAt));
+            () -> Webhook.constructEvent(payload, headers, secret, path, options));
     assertInstanceOf(TeachMeHipaaException.class, error);
     // ADR-0007: the body may hold PHI, so a rejection never carries it.
     assertNull(error.getRawBody());
@@ -122,8 +125,7 @@ class WebhookTest {
   @Test
   void verifiesADeliverySignedByThePlatformAndReturnsItsTypedEvent() {
     WebhookDelivery delivery =
-        Webhook.constructEvent(
-            EVENT_BODY, eventHeaders(), SECRET, PATH, Webhook.DEFAULT_TOLERANCE, AT_EVENT_TIME);
+        Webhook.constructEvent(EVENT_BODY, eventHeaders(), SECRET, PATH, at(AT_EVENT_TIME));
 
     WebhookDelivery.EventDelivery received =
         assertInstanceOf(WebhookDelivery.EventDelivery.class, delivery);
@@ -160,13 +162,7 @@ class WebhookTest {
   @Test
   void rejectsADeliveryVerifiedAgainstTheWrongPath() {
     WebhookSignatureException error =
-        rejection(
-            EVENT_BODY,
-            eventHeaders(),
-            SECRET,
-            "/hooks/tmh",
-            Webhook.DEFAULT_TOLERANCE,
-            AT_EVENT_TIME);
+        rejection(EVENT_BODY, eventHeaders(), SECRET, "/hooks/tmh", at(AT_EVENT_TIME));
 
     assertEquals("signature_mismatch", error.getCode());
     assertTrue(error.getMessage().contains("exact request path"));
@@ -180,8 +176,7 @@ class WebhookTest {
             eventHeaders(),
             "Zm9vYmFyYmF6cXV4cXV1eGNvcmdlZ3JhdWx0Z2FycGx5",
             PATH,
-            Webhook.DEFAULT_TOLERANCE,
-            AT_EVENT_TIME);
+            at(AT_EVENT_TIME));
 
     assertEquals("signature_mismatch", error.getCode());
   }
@@ -229,8 +224,7 @@ class WebhookTest {
             eventHeaders(),
             SECRET,
             PATH,
-            Webhook.DEFAULT_TOLERANCE,
-            Instant.parse("2026-11-15T16:36:32.124Z"));
+            at(Instant.parse("2026-11-15T16:36:32.124Z")));
 
     assertEquals(WebhookSignatureException.TIMESTAMP_OUTSIDE_TOLERANCE, error.getCode());
   }
@@ -243,8 +237,7 @@ class WebhookTest {
             eventHeaders(),
             SECRET,
             PATH,
-            Webhook.DEFAULT_TOLERANCE,
-            Instant.parse("2026-11-15T16:26:32.122Z"));
+            at(Instant.parse("2026-11-15T16:26:32.122Z")));
 
     assertEquals("timestamp_outside_tolerance", error.getCode());
   }
@@ -254,12 +247,7 @@ class WebhookTest {
   void acceptsADeliveryExactlyFiveMinutesOff(String receivedAt) {
     WebhookDelivery delivery =
         Webhook.constructEvent(
-            EVENT_BODY,
-            eventHeaders(),
-            SECRET,
-            PATH,
-            Webhook.DEFAULT_TOLERANCE,
-            Instant.parse(receivedAt));
+            EVENT_BODY, eventHeaders(), SECRET, PATH, at(Instant.parse(receivedAt)));
 
     assertInstanceOf(WebhookDelivery.EventDelivery.class, delivery);
   }
@@ -267,7 +255,15 @@ class WebhookTest {
   @Test
   void honorsACustomTolerance() {
     WebhookSignatureException error =
-        rejection(EVENT_BODY, eventHeaders(), SECRET, PATH, Duration.ofSeconds(5), AT_EVENT_TIME);
+        rejection(
+            EVENT_BODY,
+            eventHeaders(),
+            SECRET,
+            PATH,
+            Webhook.VerifyOptions.builder()
+                .tolerance(Duration.ofSeconds(5))
+                .receivedAt(AT_EVENT_TIME)
+                .build());
 
     assertEquals("timestamp_outside_tolerance", error.getCode());
   }
@@ -280,8 +276,7 @@ class WebhookTest {
             eventHeadersWithout("x-tmh-body-hash"),
             SECRET,
             PATH,
-            Webhook.DEFAULT_TOLERANCE,
-            Instant.parse("2027-01-01T00:00:00.000Z"));
+            at(Instant.parse("2027-01-01T00:00:00.000Z")));
 
     assertEquals("signature_mismatch", error.getCode());
   }
@@ -310,12 +305,7 @@ class WebhookTest {
             IllegalArgumentException.class,
             () ->
                 Webhook.constructEvent(
-                    EVENT_BODY,
-                    eventHeaders(),
-                    secret,
-                    PATH,
-                    Webhook.DEFAULT_TOLERANCE,
-                    AT_EVENT_TIME));
+                    EVENT_BODY, eventHeaders(), secret, PATH, at(AT_EVENT_TIME)));
 
     assertTrue(error.getMessage().contains("Signing secret"));
   }
@@ -323,16 +313,10 @@ class WebhookTest {
   @ParameterizedTest
   @ValueSource(longs = {0, -1})
   void refusesANonPositiveToleranceAsAProgrammingError(long seconds) {
+    Webhook.VerifyOptions.Builder options = Webhook.VerifyOptions.builder();
+
     assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            Webhook.constructEvent(
-                EVENT_BODY,
-                eventHeaders(),
-                SECRET,
-                PATH,
-                Duration.ofSeconds(seconds),
-                AT_EVENT_TIME));
+        IllegalArgumentException.class, () -> options.tolerance(Duration.ofSeconds(seconds)));
   }
 
   @ParameterizedTest
@@ -340,14 +324,7 @@ class WebhookTest {
   void refusesAPathThatIsNeitherARequestPathNorAUrlAsAProgrammingError(String path) {
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            Webhook.constructEvent(
-                EVENT_BODY,
-                eventHeaders(),
-                SECRET,
-                path,
-                Webhook.DEFAULT_TOLERANCE,
-                AT_EVENT_TIME));
+        () -> Webhook.constructEvent(EVENT_BODY, eventHeaders(), SECRET, path, at(AT_EVENT_TIME)));
   }
 
   @Test
@@ -368,8 +345,7 @@ class WebhookTest {
             headers,
             SECRET,
             PATH,
-            Webhook.DEFAULT_TOLERANCE,
-            Instant.parse("2026-11-15T16:40:06.000Z"));
+            at(Instant.parse("2026-11-15T16:40:06.000Z")));
 
     WebhookDelivery.TestDeliveryReceived received =
         assertInstanceOf(WebhookDelivery.TestDeliveryReceived.class, delivery);
@@ -391,8 +367,7 @@ class WebhookTest {
             Webhook.TestHeaderOptions.builder().timestamp(Instant.parse(EVENT_TIMESTAMP)).build());
 
     WebhookDelivery delivery =
-        Webhook.constructEvent(
-            body, headers, SECRET, PATH, Webhook.DEFAULT_TOLERANCE, AT_EVENT_TIME);
+        Webhook.constructEvent(body, headers, SECRET, PATH, at(AT_EVENT_TIME));
 
     WebhookDelivery.EventDelivery received =
         assertInstanceOf(WebhookDelivery.EventDelivery.class, delivery);
@@ -499,12 +474,7 @@ class WebhookTest {
 
     WebhookDelivery delivery =
         Webhook.constructEvent(
-            EVENT_BODY.getBytes(StandardCharsets.UTF_8),
-            headers,
-            SECRET,
-            PATH,
-            Webhook.DEFAULT_TOLERANCE,
-            AT_EVENT_TIME);
+            EVENT_BODY.getBytes(StandardCharsets.UTF_8), headers, SECRET, PATH, at(AT_EVENT_TIME));
 
     assertInstanceOf(
         EventLearnerCertified.class,
@@ -517,13 +487,7 @@ class WebhookTest {
     requestHeaders.putAll(eventHeaders());
 
     WebhookDelivery delivery =
-        Webhook.constructEvent(
-            EVENT_BODY,
-            requestHeaders::get,
-            SECRET,
-            PATH,
-            Webhook.DEFAULT_TOLERANCE,
-            AT_EVENT_TIME);
+        Webhook.constructEvent(EVENT_BODY, requestHeaders::get, SECRET, PATH, at(AT_EVENT_TIME));
 
     assertInstanceOf(WebhookDelivery.EventDelivery.class, delivery);
   }
@@ -536,8 +500,7 @@ class WebhookTest {
             eventHeaders(),
             SECRET,
             "https://partner.example.com/hooks/tmh?source=teachmehipaa",
-            Webhook.DEFAULT_TOLERANCE,
-            AT_EVENT_TIME);
+            at(AT_EVENT_TIME));
 
     assertInstanceOf(WebhookDelivery.EventDelivery.class, delivery);
   }
@@ -559,8 +522,7 @@ class WebhookTest {
                 eventHeaders()::get,
                 SECRET,
                 PATH,
-                Webhook.DEFAULT_TOLERANCE,
-                AT_EVENT_TIME);
+                at(AT_EVENT_TIME));
 
     assertInstanceOf(WebhookDelivery.TestDeliveryReceived.class, delivery);
     assertInstanceOf(WebhookDelivery.EventDelivery.class, fromBytes);

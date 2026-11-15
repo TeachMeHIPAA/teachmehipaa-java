@@ -13,8 +13,11 @@ java {
 }
 
 dependencies {
-  implementation(platform("com.fasterxml.jackson:jackson-bom:2.22.4"))
-  implementation("com.fasterxml.jackson.core:jackson-databind")
+  // Public models expose JsonNode and carry Jackson annotations, so callers compile against
+  // databind and annotations: they are API, published with compile scope.
+  api(platform("com.fasterxml.jackson:jackson-bom:2.22.4"))
+  api("com.fasterxml.jackson.core:jackson-databind")
+  api("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
   testImplementation(platform("org.junit:junit-bom:5.14.4"))

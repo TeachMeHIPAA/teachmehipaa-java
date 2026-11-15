@@ -263,16 +263,12 @@ final class ParamWriter {
   }
 
   private Types types(Ir.TypeRef ref, JavaFile file, String where) {
-    if (ref instanceof Ir.Primitive scalar) {
-      return switch (scalar.type()) {
-        case "string" -> new Types("String", "String");
-        case "integer" -> new Types("Long", "long");
-        case "number" -> new Types("Double", "double");
-        case "boolean" -> new Types("Boolean", "boolean");
-        case "dateTime" -> same(file.use("java.time.OffsetDateTime"));
-        case "binary" -> same(file.use("com.teachmehipaa.FileUpload"));
-        default -> throw new GeneratorException(where + ": no param type for " + scalar.type());
-      };
+    if (ref instanceof Ir.Primitive primitive) {
+      Scalar scalar = Scalar.of(primitive, where);
+      if (scalar == Scalar.JSON) {
+        throw new GeneratorException(where + ": free-form JSON in requests has no rule");
+      }
+      return new Types(scalar.boxed(file), scalar.primitive(file));
     }
     if (ref instanceof Ir.Ref named) {
       String owner = surface.isEnum(named.name()) ? Surface.MODEL_PACKAGE : Surface.PARAM_PACKAGE;

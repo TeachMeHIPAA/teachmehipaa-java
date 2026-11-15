@@ -16,7 +16,7 @@ import java.util.Objects;
  * @param scopes the Scopes to request; empty requests every Scope the API client holds
  * @param maxRetries retries for a failed request that is safe to replay
  * @param timeout how long to wait for each response
- * @param appInfo the integration named in the {@code User-Agent}, or {@code null}
+ * @param appInfo your software, as named in the {@code User-Agent}, or {@code null}
  * @param transport sends every HTTP request
  * @param clock tells the time for token expiry
  * @param sleeper waits between retries
@@ -48,13 +48,13 @@ public record ClientConfig(
     if (appInfo == null) {
       return agent;
     }
-    StringBuilder app = new StringBuilder(appInfo.name());
+    StringBuilder software = new StringBuilder(appInfo.name());
     if (appInfo.version() != null) {
-      app.append('/').append(appInfo.version());
+      software.append('/').append(appInfo.version());
     }
     if (appInfo.url() != null) {
-      app.append(" (").append(appInfo.url()).append(')');
+      software.append(" (").append(appInfo.url()).append(')');
     }
-    return agent + " " + app;
+    return agent + " " + software;
   }
 }

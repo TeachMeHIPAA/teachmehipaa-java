@@ -1,7 +1,5 @@
 package com.teachmehipaa;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -18,15 +16,14 @@ public final class Webhooks {
     return Webhook.constructEvent(payload, headers, secret, path);
   }
 
-  /** See {@link Webhook#constructEvent(String, Map, String, String, Duration, Instant)}. */
+  /** See {@link Webhook#constructEvent(String, Map, String, String, Webhook.VerifyOptions)}. */
   public WebhookDelivery constructEvent(
       String payload,
       Map<String, String> headers,
       String secret,
       String path,
-      Duration tolerance,
-      Instant receivedAt) {
-    return Webhook.constructEvent(payload, headers, secret, path, tolerance, receivedAt);
+      Webhook.VerifyOptions options) {
+    return Webhook.constructEvent(payload, headers, secret, path, options);
   }
 
   /** See {@link Webhook#constructEvent(String, Function, String, String)}. */
@@ -35,15 +32,16 @@ public final class Webhooks {
     return Webhook.constructEvent(payload, headers, secret, path);
   }
 
-  /** See {@link Webhook#constructEvent(String, Function, String, String, Duration, Instant)}. */
+  /**
+   * See {@link Webhook#constructEvent(String, Function, String, String, Webhook.VerifyOptions)}.
+   */
   public WebhookDelivery constructEvent(
       String payload,
       Function<String, String> headers,
       String secret,
       String path,
-      Duration tolerance,
-      Instant receivedAt) {
-    return Webhook.constructEvent(payload, headers, secret, path, tolerance, receivedAt);
+      Webhook.VerifyOptions options) {
+    return Webhook.constructEvent(payload, headers, secret, path, options);
   }
 
   /** See {@link Webhook#constructEvent(byte[], Map, String, String)}. */
@@ -52,15 +50,14 @@ public final class Webhooks {
     return Webhook.constructEvent(payload, headers, secret, path);
   }
 
-  /** See {@link Webhook#constructEvent(byte[], Map, String, String, Duration, Instant)}. */
+  /** See {@link Webhook#constructEvent(byte[], Map, String, String, Webhook.VerifyOptions)}. */
   public WebhookDelivery constructEvent(
       byte[] payload,
       Map<String, String> headers,
       String secret,
       String path,
-      Duration tolerance,
-      Instant receivedAt) {
-    return Webhook.constructEvent(payload, headers, secret, path, tolerance, receivedAt);
+      Webhook.VerifyOptions options) {
+    return Webhook.constructEvent(payload, headers, secret, path, options);
   }
 
   /** See {@link Webhook#constructEvent(byte[], Function, String, String)}. */
@@ -69,15 +66,16 @@ public final class Webhooks {
     return Webhook.constructEvent(payload, headers, secret, path);
   }
 
-  /** See {@link Webhook#constructEvent(byte[], Function, String, String, Duration, Instant)}. */
+  /**
+   * See {@link Webhook#constructEvent(byte[], Function, String, String, Webhook.VerifyOptions)}.
+   */
   public WebhookDelivery constructEvent(
       byte[] payload,
       Function<String, String> headers,
       String secret,
       String path,
-      Duration tolerance,
-      Instant receivedAt) {
-    return Webhook.constructEvent(payload, headers, secret, path, tolerance, receivedAt);
+      Webhook.VerifyOptions options) {
+    return Webhook.constructEvent(payload, headers, secret, path, options);
   }
 
   /** See {@link Webhook#generateTestHeaders(String, String, String)}. */

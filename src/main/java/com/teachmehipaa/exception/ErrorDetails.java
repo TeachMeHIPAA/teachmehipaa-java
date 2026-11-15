@@ -27,8 +27,7 @@ public record ErrorDetails(
     HttpHeaders headers,
     String rawBody) {
   private static final HttpHeaders NO_HEADERS = HttpHeaders.of(Map.of(), (name, value) -> true);
-  private static final ErrorDetails NO_RESPONSE =
-      new ErrorDetails(null, null, null, null, List.of(), null, NO_HEADERS, null);
+  private static final ErrorDetails NO_RESPONSE = builder().build();
 
   public ErrorDetails {
     errors = errors == null ? List.of() : List.copyOf(errors);
@@ -38,5 +37,68 @@ public record ErrorDetails(
   /** For a request that got no response. */
   public static ErrorDetails noResponse() {
     return NO_RESPONSE;
+  }
+
+  /** Starts details with every field unset: no status, no headers, no body. */
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /** Collects {@link ErrorDetails}. Every field is optional. Not thread-safe. */
+  public static final class Builder {
+    private Integer statusCode;
+    private String code;
+    private String title;
+    private String detail;
+    private List<FieldError> errors;
+    private String requestId;
+    private HttpHeaders headers;
+    private String rawBody;
+
+    private Builder() {}
+
+    public Builder statusCode(Integer statusCode) {
+      this.statusCode = statusCode;
+      return this;
+    }
+
+    public Builder code(String code) {
+      this.code = code;
+      return this;
+    }
+
+    public Builder title(String title) {
+      this.title = title;
+      return this;
+    }
+
+    public Builder detail(String detail) {
+      this.detail = detail;
+      return this;
+    }
+
+    public Builder errors(List<FieldError> errors) {
+      this.errors = errors;
+      return this;
+    }
+
+    public Builder requestId(String requestId) {
+      this.requestId = requestId;
+      return this;
+    }
+
+    public Builder headers(HttpHeaders headers) {
+      this.headers = headers;
+      return this;
+    }
+
+    public Builder rawBody(String rawBody) {
+      this.rawBody = rawBody;
+      return this;
+    }
+
+    public ErrorDetails build() {
+      return new ErrorDetails(statusCode, code, title, detail, errors, requestId, headers, rawBody);
+    }
   }
 }

@@ -28,45 +28,15 @@ import java.util.stream.Collectors;
  * service accessors. It reads nothing else, and the same IR always gives byte-identical output.
  */
 public final class Generator {
-  /** The packages the generator owns outright: anything else in them is deleted on a run. */
+  /**
+   * The packages the generator owns outright: anything in them but {@link HandWritten#files()} is
+   * deleted on a run.
+   */
   public static final List<String> OWNED_DIRECTORIES =
       List.of(
           "src/main/java/com/teachmehipaa/model",
           "src/main/java/com/teachmehipaa/param",
           "src/main/java/com/teachmehipaa/service");
-
-  /**
-   * Resources with hand-written methods, by IR path. The generator writes their methods into a
-   * sealed {@code <Service>Base}; the hand-written {@code <Service>} in the same package extends it
-   * and is what the client returns.
-   */
-  static final Set<String> EXTENDED_RESOURCES = Set.of("events");
-
-  /**
-   * Models with hand-written behaviour, by IR name. The generator writes their fields into a sealed
-   * {@code <Model>Base}; the hand-written {@code <Model>} in the same package extends it and is
-   * what the API reads.
-   */
-  static final Set<String> EXTENDED_MODELS = Set.of("Operation");
-
-  /**
-   * The Operations whose {@code response} has a known shape the spec leaves untyped, by operation
-   * id: these methods return the named hand-written subclass of {@code Operation}.
-   */
-  static final Map<String, String> OPERATION_MODELS =
-      Map.of(
-          "redriveWebhookSubscription", "WebhookDeliveryOperation",
-          "testWebhookSubscription", "WebhookDeliveryOperation");
-
-  /** Hand-written files inside {@link #OWNED_DIRECTORIES}, which a run leaves alone. */
-  public static final Set<String> HAND_WRITTEN_FILES =
-      Set.of(
-          "src/main/java/com/teachmehipaa/service/EventService.java",
-          "src/main/java/com/teachmehipaa/param/EventTailParams.java",
-          "src/main/java/com/teachmehipaa/model/Operation.java",
-          "src/main/java/com/teachmehipaa/model/WebhookDeliveryOperation.java",
-          "src/main/java/com/teachmehipaa/model/WebhookDeliveryResult.java",
-          "src/main/java/com/teachmehipaa/model/ExportResult.java");
 
   /** Hand-written apart from the section between the markers, which the generator owns. */
   public static final String CLIENT_FILE = "src/main/java/com/teachmehipaa/TeachMeHipaaClient.java";
@@ -92,10 +62,10 @@ public final class Generator {
             .filter(plan -> plan.method().response() instanceof Ir.OperationResponse)
             .map(plan -> plan.method().operationId())
             .collect(Collectors.toSet());
-    for (String operationId : OPERATION_MODELS.keySet()) {
+    for (String operationId : HandWritten.operationModels().keySet()) {
       if (!operationIds.contains(operationId)) {
         throw new GeneratorException(
-            "OPERATION_MODELS names " + operationId + ", which returns no Operation");
+            "HandWritten names " + operationId + ", which returns no Operation");
       }
     }
     List<JavaFile> files = new ArrayList<>();
@@ -104,7 +74,7 @@ public final class Generator {
     files.addAll(new ServiceWriter(surface).files());
     Map<String, String> rendered = new TreeMap<>();
     for (JavaFile file : files) {
-      if (HAND_WRITTEN_FILES.contains(file.path())) {
+      if (HandWritten.files().contains(file.path())) {
         throw new GeneratorException(file.path() + " is hand-written; the IR must not replace it");
       }
       if (rendered.put(file.path(), format(file.path(), file.source())) != null) {

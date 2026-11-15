@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.teachmehipaa.generator.Generator;
+import com.teachmehipaa.generator.HandWritten;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -100,9 +101,6 @@ class GeneratedSurfaceTest {
 
   /** The token endpoint is implemented by the core's token providers. */
   private static final Set<String> HAND_WRITTEN_OPERATIONS = Set.of("createAccessToken");
-
-  /** Methods with no operation of their own, written by hand on top of generated ones. */
-  private static final Set<String> HAND_WRITTEN_METHODS = Set.of("events.tail");
 
   /**
    * Generated siblings that send the same operation as the method they name, with a return type
@@ -207,7 +205,7 @@ class GeneratedSurfaceTest {
     assertEquals(57, expected.size());
     assertTrue(expected.containsAll(GENERATED_SIBLINGS.values()));
     expected.addAll(GENERATED_SIBLINGS.keySet());
-    expected.addAll(HAND_WRITTEN_METHODS);
+    expected.addAll(HandWritten.methods());
     assertEquals(expected, publicMethods(client.getClass(), ""));
   }
 
@@ -240,7 +238,7 @@ class GeneratedSurfaceTest {
       try (Stream<Path> files = Files.list(ROOT.resolve(directory))) {
         for (Path file : files.sorted().toList()) {
           String path = ROOT.relativize(file).toString();
-          if (!Generator.HAND_WRITTEN_FILES.contains(path)) {
+          if (!HandWritten.files().contains(path)) {
             committed.put(path, Files.readString(file));
           }
         }
