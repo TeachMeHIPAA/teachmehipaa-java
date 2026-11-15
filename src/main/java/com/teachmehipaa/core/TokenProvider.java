@@ -1,0 +1,17 @@
+package com.teachmehipaa.core;
+
+/**
+ * Supplies the Access token sent with each request. Client credentials is the default adapter;
+ * partner Grants and static tokens plug in here too.
+ *
+ * <p>Implementations must be thread-safe.
+ */
+@FunctionalInterface
+public interface TokenProvider {
+  /**
+   * Returns a currently valid Access token, minting one if needed.
+   *
+   * @throws com.teachmehipaa.exception.TeachMeHipaaException when no token could be obtained
+   */
+  String accessToken();
+}
