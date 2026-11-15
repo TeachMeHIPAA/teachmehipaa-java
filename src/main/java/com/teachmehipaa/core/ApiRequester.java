@@ -284,8 +284,8 @@ public final class ApiRequester {
     boolean replayed = false;
     int retryNumber = 1;
     while (true) {
-      // Outside the catch below: a failed mint was already retried by the token provider. Public
-      // endpoints never mint one.
+      // Outside the catch below: the token provider alone decides whether a failed mint is retried,
+      // and a Grant's exchange never is (ADR-0004). Public endpoints never mint one.
       String accessToken = request.authenticated() ? tokens.accessToken() : null;
       try {
         return exchange.apply(authorized(prepared, accessToken));
@@ -295,7 +295,12 @@ public final class ApiRequester {
         if (accessToken != null && !replayed && isUnauthorized(failure)) {
           replayed = true;
           tokens.invalidate(accessToken);
-          continue;
+          // A provider that can't renew, such as a static token, hands back the same token, which
+          // the API would only refuse again. The next pass reuses the renewed one from the cache.
+          if (!tokens.accessToken().equals(accessToken)) {
+            continue;
+          }
+          throw failure;
         }
         if (!request.retrySafe() || retryNumber > maxRetries || !Retries.isTransient(failure)) {
           throw failure;

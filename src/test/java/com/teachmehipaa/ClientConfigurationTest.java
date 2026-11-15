@@ -148,7 +148,7 @@ class ClientConfigurationTest {
   }
 
   @Test
-  void requiresTheClientIdAndSecret() {
+  void theClientIdAndSecretGoTogether() {
     assertThrows(
         IllegalStateException.class,
         () -> TeachMeHipaaClient.builder().clientId(CLIENT_ID).build());

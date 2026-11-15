@@ -3,13 +3,8 @@ package com.teachmehipaa.core;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.teachmehipaa.exception.TeachMeHipaaException;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -24,26 +19,21 @@ public final class ClientCredentialsTokenProvider implements TokenProvider {
 
   private final ReentrantLock mintLock = new ReentrantLock();
   private volatile CachedToken current;
-  private final String basicCredentials;
-  private final byte[] form;
+  private final String authorization;
+  private final String form;
   private final ClientConfig config;
 
   public ClientCredentialsTokenProvider(String clientId, String clientSecret, ClientConfig config) {
     Objects.requireNonNull(clientId, "clientId");
     Objects.requireNonNull(clientSecret, "clientSecret");
     this.config = Objects.requireNonNull(config, "config");
-    // RFC 6749 §2.3.1: each half is form-encoded before base64.
-    this.basicCredentials =
-        Base64.getEncoder()
-            .encodeToString(
-                (formEncode(clientId) + ":" + formEncode(clientSecret))
-                    .getBytes(StandardCharsets.UTF_8));
+    this.authorization = TokenEndpoint.basicAuthorization(clientId, clientSecret);
     String body = "grant_type=client_credentials";
     // Leaving scope out grants every Scope the API client holds.
     if (!config.scopes().isEmpty()) {
-      body += "&scope=" + formEncode(String.join(" ", config.scopes()));
+      body += "&scope=" + TokenEndpoint.formEncode(String.join(" ", config.scopes()));
     }
-    this.form = body.getBytes(StandardCharsets.UTF_8);
+    this.form = body;
   }
 
   @Override
@@ -101,21 +91,7 @@ public final class ClientCredentialsTokenProvider implements TokenProvider {
   }
 
   private CachedToken mintOnce() {
-    TransportRequest request =
-        new TransportRequest(
-            "POST",
-            URI.create(config.baseUrl() + "/auth/token"),
-            Map.of(
-                "accept",
-                "application/json",
-                "authorization",
-                "Basic " + basicCredentials,
-                "content-type",
-                "application/x-www-form-urlencoded",
-                "user-agent",
-                config.userAgent()),
-            form,
-            config.timeout());
+    TransportRequest request = TokenEndpoint.request(config, authorization, form);
     // Expiry counts from when the request left, so a slow response can't stretch the token past
     // its real lifetime.
     Instant requestedAt = config.clock().instant();
@@ -146,10 +122,6 @@ public final class ClientCredentialsTokenProvider implements TokenProvider {
     } catch (IOException notJson) {
       return null;
     }
-  }
-
-  private static String formEncode(String value) {
-    return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 
   private record CachedToken(String value, Instant expiresAt) {}

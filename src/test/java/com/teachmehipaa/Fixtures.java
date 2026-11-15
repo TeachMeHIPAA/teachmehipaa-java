@@ -12,6 +12,16 @@ final class Fixtures {
       "Y2xpXzAxSkQ4WjROM1FYNVY3VzlZMkI0QzZEOEVGOnRtaF9jc19rM0pxOS1aeF84TG1OMnBS"
           + "NHRWNndZMGFCMWNEM2VGNWdIN2lKOWtMMG1O";
 
+  static final String APP_ID = "app_01JD8Z4N3QX5V7W9Y2B4C6D8EK";
+  static final String APP_SECRET = "tmh_as_Qw3rTy-Ui_9oPaS2dF4gH6jK8lZ0xC1vB3nM5qW7eR9";
+  // base64("<APP_ID>:<APP_SECRET>"), computed outside the SDK.
+  static final String APP_BASIC_CREDENTIALS =
+      "YXBwXzAxSkQ4WjROM1FYNVY3VzlZMkI0QzZEOEVLOnRtaF9hc19RdzNyVHktVWlfOW9QYVMy"
+          + "ZEY0Z0g2aks4bFoweEMxdkIzbk01cVc3ZVI5";
+  static final String REFRESH_TOKEN_1 = "tmh_rt_grt_01JD8Z4N3QX5V7W9Y2B4C6D8EP.first";
+  static final String REFRESH_TOKEN_2 = "tmh_rt_grt_01JD8Z4N3QX5V7W9Y2B4C6D8EP.second";
+  static final String REFRESH_TOKEN_3 = "tmh_rt_grt_01JD8Z4N3QX5V7W9Y2B4C6D8EP.third";
+
   static final String ORG_ID = "org_acme";
   static final String LEARNER_ID = "sub_01JD8Z4N3QX5V7W9Y2B4C6D8EG";
   static final String ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiJ9.first.sig";
@@ -69,6 +79,24 @@ final class Fixtures {
          "scope": "learners:read learners:write"}
         """
         .formatted(accessToken);
+  }
+
+  /** An authorization_code or refresh_token response, per AuthorizationCodeTokenResponse. */
+  static String grantTokenJson(String accessToken, String refreshToken) {
+    return """
+        {"access_token": "%s", "token_type": "Bearer", "expires_in": 900,
+         "refresh_token": "%s", "scope": "learners:read learners:write"}
+        """
+        .formatted(accessToken, refreshToken);
+  }
+
+  static Reply oauthError(int status, String error, String description) {
+    return Reply.json(
+        status,
+        """
+        {"error": "%s", "error_description": "%s"}
+        """
+            .formatted(error, description));
   }
 
   static String introspectionJson(String orgIdJson) {

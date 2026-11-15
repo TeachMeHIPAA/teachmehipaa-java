@@ -88,13 +88,31 @@ final class Errors {
    * as an HTML page or a bare 502, maps like any other response.
    */
   static TeachMeHipaaException fromOAuthError(TransportResponse response, Instant now) {
+    return fromOAuthError(response, now, null);
+  }
+
+  /**
+   * As {@link #fromOAuthError(TransportResponse, Instant)}, adding {@code invalidGrantGuidance},
+   * when not {@code null}, to the message of an {@code invalid_grant}: only the caller can fix one.
+   */
+  static TeachMeHipaaException fromOAuthError(
+      TransportResponse response, Instant now, String invalidGrantGuidance) {
     JsonNode oauth = jsonBody(response);
     String code = text(oauth, "error");
     if (code == null) {
       return fromResponse(response, now);
     }
     String detail = text(oauth, "error_description");
-    return new OAuthException(join(code, detail), details(response, code, null, detail, null));
+    String message = join(code, detail);
+    if (invalidGrantGuidance != null && "invalid_grant".equals(code)) {
+      message = withGuidance(message, invalidGrantGuidance);
+    }
+    return new OAuthException(message, details(response, code, null, detail, null));
+  }
+
+  /** Appends what only the caller can do about a failure to its message. */
+  static String withGuidance(String message, String guidance) {
+    return message.replaceAll("\\.$", "") + ". " + guidance;
   }
 
   /** A success that claimed JSON but could not be read as what the call returns. */

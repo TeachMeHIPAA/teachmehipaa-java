@@ -1,11 +1,15 @@
 package com.teachmehipaa;
 
 import com.teachmehipaa.core.ApiRequester;
+import com.teachmehipaa.core.BaseUrls;
 import com.teachmehipaa.core.ClientConfig;
 import com.teachmehipaa.core.ClientCredentialsTokenProvider;
 import com.teachmehipaa.core.HttpTransport;
 import com.teachmehipaa.core.JdkHttpTransport;
+import com.teachmehipaa.core.PartnerGrantTokenProvider;
 import com.teachmehipaa.core.Sleeper;
+import com.teachmehipaa.core.StaticTokenProvider;
+import com.teachmehipaa.core.TokenProvider;
 import com.teachmehipaa.service.AuditEventService;
 import com.teachmehipaa.service.AuthService;
 import com.teachmehipaa.service.CertificateService;
@@ -22,7 +26,6 @@ import com.teachmehipaa.service.PaymentMethodService;
 import com.teachmehipaa.service.SeatOrderService;
 import com.teachmehipaa.service.SeatService;
 import com.teachmehipaa.service.WebhookSubscriptionService;
-import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Arrays;
@@ -45,9 +48,30 @@ import java.util.Objects;
  *     .build();
  * Learner learner = client.learners().retrieve("sub_...");
  * }</pre>
+ *
+ * <p>A Partner app acting for a connected Organization passes a {@link PartnerGrantTokenProvider}
+ * instead of the id and secret; a caller with its own auth passes a {@link StaticTokenProvider}. A
+ * Partner app's own id and secret mint a Partner-level token for {@code partners()}, which needs no
+ * Organization.
  */
 public final class TeachMeHipaaClient {
   private static final Webhooks WEBHOOKS = new Webhooks();
+
+  // Public endpoints never ask for a token, so a client without credentials still serves them;
+  // anything else stops here, before a request is built.
+  private static final TokenProvider NO_CREDENTIALS =
+      new TokenProvider() {
+        @Override
+        public String accessToken() {
+          throw new IllegalStateException(
+              "This client has no credentials, so it can only call public endpoints such as"
+                  + " courses() and certificateVerifications(). Build it with clientId and"
+                  + " clientSecret, or a tokenProvider.");
+        }
+
+        @Override
+        public void invalidate(String accessToken) {}
+      };
 
   private final Environment environment;
   private final ClientConfig config;
@@ -59,7 +83,12 @@ public final class TeachMeHipaaClient {
     this.requester =
         new ApiRequester(
             config,
-            new ClientCredentialsTokenProvider(builder.clientId, builder.clientSecret, config));
+            builder.tokenProvider != null
+                ? builder.tokenProvider
+                : builder.clientId != null
+                    ? new ClientCredentialsTokenProvider(
+                        builder.clientId, builder.clientSecret, config)
+                    : NO_CREDENTIALS);
   }
 
   public static Builder builder() {
@@ -198,6 +227,7 @@ public final class TeachMeHipaaClient {
 
     private String clientId;
     private String clientSecret;
+    private TokenProvider tokenProvider;
     private Environment environment = Environment.LIVE;
     private String baseUrl;
     private String organizationId;
@@ -212,15 +242,25 @@ public final class TeachMeHipaaClient {
 
     private Builder() {}
 
-    /** Your API client's id ({@code cli_…}). Required. */
+    /** Your API client's id ({@code cli_…}), or a Partner app's ({@code app_…}). */
     public Builder clientId(String clientId) {
       this.clientId = requireNonBlank(clientId, "clientId");
       return this;
     }
 
-    /** Your API client's secret ({@code tmh_cs_…}). Required. */
+    /** The secret that goes with {@link #clientId}. */
     public Builder clientSecret(String clientSecret) {
       this.clientSecret = requireNonBlank(clientSecret, "clientSecret");
+      return this;
+    }
+
+    /**
+     * Supplies every Access token instead of the client minting them, such as a {@link
+     * PartnerGrantTokenProvider} or a {@link StaticTokenProvider}. Give either this or {@code
+     * clientId} and {@code clientSecret}; Scopes belong to the provider.
+     */
+    public Builder tokenProvider(TokenProvider tokenProvider) {
+      this.tokenProvider = Objects.requireNonNull(tokenProvider, "tokenProvider");
       return this;
     }
 
@@ -235,12 +275,7 @@ public final class TeachMeHipaaClient {
 
     /** Overrides the Environment's base URL, for example to point at a mock server. */
     public Builder baseUrl(String baseUrl) {
-      Objects.requireNonNull(baseUrl, "baseUrl");
-      URI uri = URI.create(baseUrl);
-      if (!uri.isAbsolute() || uri.getHost() == null) {
-        throw new IllegalArgumentException("baseUrl must be an absolute http(s) URL");
-      }
-      this.baseUrl = baseUrl.replaceAll("/+$", "");
+      this.baseUrl = BaseUrls.normalize(baseUrl);
       return this;
     }
 
@@ -319,15 +354,38 @@ public final class TeachMeHipaaClient {
     }
 
     /**
-     * @throws IllegalStateException when the client id or secret is missing
+     * Builds the client. Without a client id and secret or a token provider, it can call only
+     * public endpoints, such as {@code courses()} and {@code certificateVerifications()}.
+     *
+     * @throws IllegalStateException when only one of the client id and secret is given, when a
+     *     token provider is combined with them or with Scopes, or when a {@link
+     *     PartnerGrantTokenProvider} exchanges at a different base URL than the client calls
      */
     public TeachMeHipaaClient build() {
-      if (clientId == null || clientSecret == null) {
-        throw new IllegalStateException("clientId and clientSecret are required");
+      if (tokenProvider != null
+          && (clientId != null || clientSecret != null || !scopes.isEmpty())) {
+        throw new IllegalStateException(
+            "give either tokenProvider or clientId and clientSecret, not both; scopes belong to"
+                + " the token provider");
+      }
+      if ((clientId == null) != (clientSecret == null)) {
+        throw new IllegalStateException("clientId and clientSecret go together; pass both");
+      }
+      String resolvedBaseUrl = baseUrl != null ? baseUrl : environment.baseUrl();
+      // A Grant's Refresh token works only in its own Environment, and a provider that refreshed
+      // against another one would hand the client tokens its API refuses.
+      if (tokenProvider instanceof PartnerGrantTokenProvider grant
+          && !grant.baseUrl().equals(resolvedBaseUrl)) {
+        throw new IllegalStateException(
+            "tokenProvider exchanges Refresh tokens at "
+                + grant.baseUrl()
+                + ", but the client calls "
+                + resolvedBaseUrl
+                + "; give both the same environment and baseUrl");
       }
       ClientConfig config =
           new ClientConfig(
-              baseUrl != null ? baseUrl : environment.baseUrl(),
+              resolvedBaseUrl,
               organizationId,
               scopes,
               maxRetries,
