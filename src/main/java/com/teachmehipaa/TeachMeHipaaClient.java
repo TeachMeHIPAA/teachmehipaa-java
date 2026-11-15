@@ -47,6 +47,8 @@ import java.util.Objects;
  * }</pre>
  */
 public final class TeachMeHipaaClient {
+  private static final Webhooks WEBHOOKS = new Webhooks();
+
   private final Environment environment;
   private final ClientConfig config;
   private final ApiRequester requester;
@@ -149,6 +151,11 @@ public final class TeachMeHipaaClient {
   }
 
   // The end of the section generated from openapi/sdk-ir.json.
+
+  /** Verifies Deliveries and signs test payloads; the same as {@link Webhook}. */
+  public Webhooks webhooks() {
+    return WEBHOOKS;
+  }
 
   public Environment getEnvironment() {
     return environment;
