@@ -47,7 +47,54 @@ val generateSdkVersion by tasks.registering {
   }
 }
 
-sourceSets { main { java.srcDir(generateSdkVersion) } }
+sourceSets {
+  main { java.srcDir(generateSdkVersion) }
+  // The generator turns openapi/sdk-ir.json into the model, param and service packages. It is a
+  // build tool, so it lives in its own source set and never reaches the library jar.
+  create("generator") { java.srcDir("generator/src/main/java") }
+}
+
+val generatorImplementation = configurations.getByName("generatorImplementation")
+
+dependencies {
+  generatorImplementation(platform("com.fasterxml.jackson:jackson-bom:2.22.4"))
+  generatorImplementation("com.fasterxml.jackson.core:jackson-databind")
+  generatorImplementation("com.networknt:json-schema-validator:1.5.9")
+  generatorImplementation("com.google.googlejavaformat:google-java-format:1.28.0")
+  "generatorRuntimeOnly"("org.slf4j:slf4j-nop:2.0.17")
+
+  // The coverage test runs the generator to prove the committed output is current.
+  testImplementation(sourceSets["generator"].output)
+}
+
+configurations.testImplementation { extendsFrom(generatorImplementation) }
+
+// google-java-format reaches into javac's internals.
+val javacExports =
+    listOf("api", "code", "file", "parser", "tree", "util").map {
+      "--add-exports=jdk.compiler/com.sun.tools.javac.$it=ALL-UNNAMED"
+    }
+
+tasks.register<JavaExec>("generate") {
+  group = "build"
+  description = "Regenerates the model, param and service packages from openapi/sdk-ir.json."
+  classpath = sourceSets["generator"].runtimeClasspath
+  mainClass = "com.teachmehipaa.generator.Generate"
+  jvmArgs(javacExports)
+  args(layout.projectDirectory.asFile.absolutePath)
+}
+
+val generateCheck =
+    tasks.register<JavaExec>("generateCheck") {
+      group = "verification"
+      description = "Fails when the generated packages differ from a fresh run of the generator."
+      classpath = sourceSets["generator"].runtimeClasspath
+      mainClass = "com.teachmehipaa.generator.Generate"
+      jvmArgs(javacExports)
+      args("--check", layout.projectDirectory.asFile.absolutePath)
+    }
+
+tasks.check { dependsOn(generateCheck) }
 
 tasks.withType<JavaCompile>().configureEach {
   options.release = 17
@@ -64,11 +111,12 @@ tasks.withType<Javadoc>().configureEach {
 
 tasks.test {
   useJUnitPlatform()
+  jvmArgs(javacExports)
 }
 
 spotless {
   java {
-    target("src/**/*.java")
+    target("src/**/*.java", "generator/**/*.java")
     googleJavaFormat("1.28.0")
     removeUnusedImports()
   }

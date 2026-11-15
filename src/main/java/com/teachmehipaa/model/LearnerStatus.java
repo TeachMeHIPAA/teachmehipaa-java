@@ -1,3 +1,4 @@
+// Generated from openapi/sdk-ir.json by generator/. Do not edit: run ./gradlew generate.
 package com.teachmehipaa.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -9,20 +10,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * A Learner's training status in one Course. The known values are constants; the API may add values
- * at any time, and {@link #of} accepts them too (ADR-0006).
+ * The known values are constants; the API may add values at any time, and {@link #of} accepts them
+ * too (ADR-0006).
  */
 public final class LearnerStatus {
-  /** Invited, not started. */
   public static final LearnerStatus NOT_STARTED = new LearnerStatus("not_started");
-
   public static final LearnerStatus INVITE_BOUNCED = new LearnerStatus("invite_bounced");
   public static final LearnerStatus IN_PROGRESS = new LearnerStatus("in_progress");
   public static final LearnerStatus COMPLIANT = new LearnerStatus("compliant");
-
-  /** Within 60 days of the Certificate's expiry. */
   public static final LearnerStatus EXPIRING_SOON = new LearnerStatus("expiring_soon");
-
   public static final LearnerStatus EXPIRED = new LearnerStatus("expired");
   public static final LearnerStatus REMOVED = new LearnerStatus("removed");
 
@@ -37,7 +33,7 @@ public final class LearnerStatus {
     this.value = value;
   }
 
-  /** The status for a wire value, known or not. */
+  /** The value for a wire value, known or not. */
   @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
   public static LearnerStatus of(String value) {
     Objects.requireNonNull(value, "value");
@@ -45,7 +41,7 @@ public final class LearnerStatus {
     return known != null ? known : new LearnerStatus(value);
   }
 
-  /** The wire value, such as {@code in_progress}. */
+  /** The wire value. */
   @JsonValue
   public String value() {
     return value;
@@ -58,7 +54,7 @@ public final class LearnerStatus {
 
   @Override
   public boolean equals(Object other) {
-    return other instanceof LearnerStatus status && status.value.equals(value);
+    return other instanceof LearnerStatus that && that.value.equals(value);
   }
 
   @Override

@@ -1,27 +1,21 @@
+// Generated from openapi/sdk-ir.json by generator/. Do not edit: run ./gradlew generate.
 package com.teachmehipaa.param;
 
 import java.util.Objects;
 
-/** Parameters for retrieving a Learner. Immutable. */
+/** Parameters for {@code client.learners().retrieve(…)}. Immutable. */
 public final class LearnerRetrieveParams {
-  private static final LearnerRetrieveParams NONE = builder().build();
-
   private final String courseId;
 
   private LearnerRetrieveParams(Builder builder) {
     this.courseId = builder.courseId;
   }
 
-  /** No parameters: the Organization's default Course. */
-  public static LearnerRetrieveParams none() {
-    return NONE;
-  }
-
   public static Builder builder() {
     return new Builder();
   }
 
-  /** The Course to read the Learner's status in, or {@code null} for the default Course. */
+  /** The course. Defaults to the organization's default course. */
   public String getCourseId() {
     return courseId;
   }
@@ -31,7 +25,7 @@ public final class LearnerRetrieveParams {
 
     private Builder() {}
 
-    /** The Course to read the Learner's status in. Defaults to the Organization's default. */
+    /** The course. Defaults to the organization's default course. */
     public Builder courseId(String courseId) {
       this.courseId = Objects.requireNonNull(courseId, "courseId");
       return this;

@@ -1,3 +1,4 @@
+// Generated from openapi/sdk-ir.json by generator/. Do not edit: run ./gradlew generate.
 package com.teachmehipaa.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -5,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.teachmehipaa.core.ApiResource;
 import java.time.OffsetDateTime;
 
-/** A Member taking a Course, seen from the Organization's side. */
 public final class Learner extends ApiResource {
   private final String learnerId;
   private final String email;
@@ -45,56 +45,63 @@ public final class Learner extends ApiResource {
     this.certificate = certificate;
   }
 
-  /** The Learner's id, the same as the Member's {@code subjectId} ({@code sub_…}). */
+  /** Unique identifier for the learner. The same as the member's <code>subjectId</code>. */
   public String getLearnerId() {
     return learnerId;
   }
 
+  /** The learner's email address. */
   public String getEmail() {
     return email;
   }
 
-  /** The Learner's full name, or {@code null}. */
+  /** The learner's full name. May be {@code null}. */
   public String getName() {
     return name;
   }
 
-  /** Your own id for the Learner, unique within the Organization, or {@code null}. */
+  /** Your own id for the learner, unique within the organization. May be {@code null}. */
   public String getExternalId() {
     return externalId;
   }
 
-  /** The Learner's training status in this Course. */
+  /**
+   * The learner's training status in this course. One of <code>not_started</code> (invited), <code>
+   * invite_bounced</code>, <code>in_progress</code>, <code>compliant</code>, <code>expiring_soon
+   * </code> (within 60 days of expiry), <code>expired</code> or <code>removed</code>.
+   */
   public LearnerStatus getStatus() {
     return status;
   }
 
-  /** The Course this Learner record is for. */
+  /** The course this learner record is for. */
   public LearnerCourse getCourse() {
     return course;
   }
 
-  /** When the Learner was invited, or {@code null}. */
+  /** When the learner was invited (ISO 8601). May be {@code null}. */
   public OffsetDateTime getInvitedAt() {
     return invitedAt;
   }
 
-  /** When the Learner started training, or {@code null}. */
+  /** When the learner started training. May be {@code null}. */
   public OffsetDateTime getStartedAt() {
     return startedAt;
   }
 
-  /** When the Learner completed the Course, or {@code null}. */
+  /** When the learner completed the course. May be {@code null}. */
   public OffsetDateTime getCompletedAt() {
     return completedAt;
   }
 
-  /** When the Learner's training is due, or {@code null}. */
+  /** When the learner's training is due. May be {@code null}. */
   public OffsetDateTime getDueAt() {
     return dueAt;
   }
 
-  /** The Learner's current Certificate, or {@code null}. */
+  /**
+   * The learner's current certificate, with its verification and PDF links. May be {@code null}.
+   */
   public LearnerCertificate getCertificate() {
     return certificate;
   }

@@ -1,6 +1,7 @@
 package com.teachmehipaa;
 
 import static com.teachmehipaa.Fixtures.ACCESS_TOKEN;
+import static com.teachmehipaa.Fixtures.ETAG;
 import static com.teachmehipaa.Fixtures.LEARNER_ID;
 import static com.teachmehipaa.Fixtures.LEARNER_JSON;
 import static com.teachmehipaa.Fixtures.LEARNER_ROUTE;
@@ -141,7 +142,7 @@ class AccessTokenReplayTest {
     clientOn(api)
         .build()
         .learners()
-        .update(LEARNER_ID, LearnerUpdateParams.builder().name("Ana Lima").build());
+        .update(LEARNER_ID, LearnerUpdateParams.builder().ifMatch(ETAG).name("Ana Lima").build());
 
     assertEquals(
         List.of("Bearer " + ACCESS_TOKEN, "Bearer " + SECOND_ACCESS_TOKEN),

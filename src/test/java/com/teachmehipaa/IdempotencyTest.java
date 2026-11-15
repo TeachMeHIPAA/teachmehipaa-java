@@ -1,6 +1,7 @@
 package com.teachmehipaa;
 
 import static com.teachmehipaa.Fixtures.ACCESS_TOKEN;
+import static com.teachmehipaa.Fixtures.ETAG;
 import static com.teachmehipaa.Fixtures.LEARNER_ID;
 import static com.teachmehipaa.Fixtures.LEARNER_JSON;
 import static com.teachmehipaa.Fixtures.LEARNER_ROUTE;
@@ -23,6 +24,7 @@ import com.teachmehipaa.exception.ApiConnectionException;
 import com.teachmehipaa.exception.ApiException;
 import com.teachmehipaa.exception.TeachMeHipaaException;
 import com.teachmehipaa.model.Learner;
+import com.teachmehipaa.model.LearnerWriteResult;
 import com.teachmehipaa.param.LearnerCreateParams;
 import com.teachmehipaa.param.LearnerUpdateParams;
 import java.io.IOException;
@@ -86,7 +88,7 @@ class IdempotencyTest {
   void sendsACreateAsJsonWithAGeneratedUuidV4IdempotencyKey() throws IOException {
     FakeTransport api = api().on(CREATE_ROUTE, CREATED);
 
-    Learner learner =
+    LearnerWriteResult learner =
         clientOn(api)
             .learners()
             .create(
@@ -181,7 +183,9 @@ class IdempotencyTest {
         () ->
             client
                 .learners()
-                .update(LEARNER_ID, LearnerUpdateParams.builder().name("Ana Example").build()));
+                .update(
+                    LEARNER_ID,
+                    LearnerUpdateParams.builder().ifMatch(ETAG).name("Ana Example").build()));
 
     List<TransportRequest> attempts = api.requestsTo(UPDATE_ROUTE);
     assertEquals(1, attempts.size());
@@ -202,14 +206,15 @@ class IdempotencyTest {
                 .learners()
                 .update(
                     LEARNER_ID,
-                    LearnerUpdateParams.builder().name("Ana Example").build(),
+                    LearnerUpdateParams.builder().ifMatch(ETAG).name("Ana Example").build(),
                     RequestOptions.builder().idempotencyKey("patch-1").build()));
 
     assertEquals(List.of("patch-1"), idempotencyKeys(api, UPDATE_ROUTE));
   }
 
   @Test
-  void anUpdateSendsOnlyTheFieldsGivenAndNullForAClearedOne() throws IOException {
+  void anUpdateSendsOnlyTheFieldsGivenAndNullForAClearedOneWithTheETagInIfMatch()
+      throws IOException {
     FakeTransport api = api().on(UPDATE_ROUTE, Reply.json(LEARNER_JSON));
 
     Learner learner =
@@ -217,11 +222,16 @@ class IdempotencyTest {
             .learners()
             .update(
                 LEARNER_ID,
-                LearnerUpdateParams.builder().name("Ana Lima").clearExternalId().build());
+                LearnerUpdateParams.builder()
+                    .ifMatch(ETAG)
+                    .name("Ana Lima")
+                    .clearExternalId()
+                    .build());
 
     assertEquals("Ana Lima", learner.getName());
     assertEquals(
         json("{\"name\": \"Ana Lima\", \"externalId\": null}"),
         body(api.requestsTo(UPDATE_ROUTE).get(0)));
+    assertEquals(ETAG, api.requestsTo(UPDATE_ROUTE).get(0).headers().get("if-match"));
   }
 }

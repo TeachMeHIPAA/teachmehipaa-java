@@ -3,6 +3,7 @@ package com.teachmehipaa.core;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -25,5 +26,15 @@ public abstract class ApiModel {
   @JsonAnySetter
   void putExtraField(String name, Object value) {
     extraFields.put(name, value);
+  }
+
+  /** An unmodifiable view of a list Jackson created for this model, or {@code null}. */
+  protected static <T> List<T> immutable(List<T> list) {
+    return list == null ? null : Collections.unmodifiableList(list);
+  }
+
+  /** An unmodifiable view of a map Jackson created for this model, or {@code null}. */
+  protected static <T> Map<String, T> immutable(Map<String, T> map) {
+    return map == null ? null : Collections.unmodifiableMap(map);
   }
 }

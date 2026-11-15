@@ -1,3 +1,4 @@
+// Generated from openapi/sdk-ir.json by generator/. Do not edit: run ./gradlew generate.
 package com.teachmehipaa.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -5,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.teachmehipaa.core.ApiModel;
 import java.time.OffsetDateTime;
 
-/** A Learner's current Certificate, with its verification and PDF links. */
+/** The learner's current certificate, with its verification and PDF links. */
 public final class LearnerCertificate extends ApiModel {
   private final String certificateId;
   private final OffsetDateTime issuedAt;
@@ -39,12 +40,11 @@ public final class LearnerCertificate extends ApiModel {
     return expiresAt;
   }
 
-  /** The public Certificate verification page, or {@code null}. */
+  /** May be {@code null}. */
   public String getVerifyUrl() {
     return verifyUrl;
   }
 
-  /** The API path of the Certificate's PDF. */
   public String getPdfUrl() {
     return pdfUrl;
   }

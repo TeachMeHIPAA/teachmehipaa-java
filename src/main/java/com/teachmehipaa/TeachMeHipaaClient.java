@@ -6,7 +6,21 @@ import com.teachmehipaa.core.ClientCredentialsTokenProvider;
 import com.teachmehipaa.core.HttpTransport;
 import com.teachmehipaa.core.JdkHttpTransport;
 import com.teachmehipaa.core.Sleeper;
+import com.teachmehipaa.service.AuditEventService;
+import com.teachmehipaa.service.AuthService;
+import com.teachmehipaa.service.CertificateService;
+import com.teachmehipaa.service.CertificateVerificationService;
+import com.teachmehipaa.service.ComplianceService;
+import com.teachmehipaa.service.CourseService;
+import com.teachmehipaa.service.EnrollmentService;
+import com.teachmehipaa.service.EventService;
 import com.teachmehipaa.service.LearnerService;
+import com.teachmehipaa.service.MemberService;
+import com.teachmehipaa.service.OperationService;
+import com.teachmehipaa.service.PartnerService;
+import com.teachmehipaa.service.PaymentMethodService;
+import com.teachmehipaa.service.SeatOrderService;
+import com.teachmehipaa.service.SeatService;
 import com.teachmehipaa.service.WebhookSubscriptionService;
 import java.net.URI;
 import java.time.Clock;
@@ -35,31 +49,106 @@ import java.util.Objects;
 public final class TeachMeHipaaClient {
   private final Environment environment;
   private final ClientConfig config;
-  private final LearnerService learners;
-  private final WebhookSubscriptionService webhookSubscriptions;
+  private final ApiRequester requester;
 
   private TeachMeHipaaClient(Builder builder, ClientConfig config) {
     this.environment = builder.environment;
     this.config = config;
-    ApiRequester requester =
+    this.requester =
         new ApiRequester(
             config,
             new ClientCredentialsTokenProvider(builder.clientId, builder.clientSecret, config));
-    this.learners = new LearnerService(requester);
-    this.webhookSubscriptions = new WebhookSubscriptionService(requester);
   }
 
   public static Builder builder() {
     return new Builder();
   }
 
-  public LearnerService learners() {
-    return learners;
+  // Services hold nothing but the requester, so each accessor call makes a fresh one, as in
+  // stripe-java.
+  // The beginning of the section generated from openapi/sdk-ir.json.
+
+  /** Audit events in the client's Organization. */
+  public AuditEventService auditEvents() {
+    return new AuditEventService(requester);
   }
 
-  public WebhookSubscriptionService webhookSubscriptions() {
-    return webhookSubscriptions;
+  /** Auth. */
+  public AuthService auth() {
+    return new AuthService(requester);
   }
+
+  /** Certificate verifications. */
+  public CertificateVerificationService certificateVerifications() {
+    return new CertificateVerificationService(requester);
+  }
+
+  /** Certificates in the client's Organization. */
+  public CertificateService certificates() {
+    return new CertificateService(requester);
+  }
+
+  /** Compliance in the client's Organization. */
+  public ComplianceService compliance() {
+    return new ComplianceService(requester);
+  }
+
+  /** Courses. */
+  public CourseService courses() {
+    return new CourseService(requester);
+  }
+
+  /** Enrollments in the client's Organization. */
+  public EnrollmentService enrollments() {
+    return new EnrollmentService(requester);
+  }
+
+  /** Events in the client's Organization. */
+  public EventService events() {
+    return new EventService(requester);
+  }
+
+  /** Learners in the client's Organization. */
+  public LearnerService learners() {
+    return new LearnerService(requester);
+  }
+
+  /** Members in the client's Organization. */
+  public MemberService members() {
+    return new MemberService(requester);
+  }
+
+  /** Operations in the client's Organization. */
+  public OperationService operations() {
+    return new OperationService(requester);
+  }
+
+  /** Partners. */
+  public PartnerService partners() {
+    return new PartnerService(requester);
+  }
+
+  /** Payment method in the client's Organization. */
+  public PaymentMethodService paymentMethod() {
+    return new PaymentMethodService(requester);
+  }
+
+  /** Seat orders in the client's Organization. */
+  public SeatOrderService seatOrders() {
+    return new SeatOrderService(requester);
+  }
+
+  /** Seats in the client's Organization. */
+  public SeatService seats() {
+    return new SeatService(requester);
+  }
+
+  /** Webhook subscriptions in the client's Organization. */
+  public WebhookSubscriptionService webhookSubscriptions() {
+    return new WebhookSubscriptionService(requester);
+  }
+
+  // The end of the section generated from openapi/sdk-ir.json.
 
   public Environment getEnvironment() {
     return environment;

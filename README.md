@@ -38,19 +38,22 @@ are fixed once built.
 ```sh
 ./gradlew spotlessApply   # format
 ./gradlew spotlessCheck build   # what CI runs: format check, compile, tests, javadoc
+./gradlew generate   # regenerate service, model and param from openapi/sdk-ir.json
 ```
 
 Layout under `src/main/java/com/teachmehipaa/`:
 
 | Package | Contents |
 |---|---|
-| `com.teachmehipaa` | `TeachMeHipaaClient`, `Environment`, `AppInfo`, `RequestOptions` |
-| `core` | Hand-written core: transport seam, token providers, request pipeline, model bases |
+| `com.teachmehipaa` | `TeachMeHipaaClient`, `Environment`, `AppInfo`, `RequestOptions`, `FileUpload` |
+| `core` | Hand-written core: transport seam, token providers, request pipeline, model bases, `Page`, `EmptyResponse`, `BinaryResponse` |
 | `exception` | `TeachMeHipaaException` and its subclasses |
 | `service` | One service per resource (`LearnerService`) |
 | `model` | Response models (`Learner`) and open enums |
 | `param` | Request parameter builders (`LearnerRetrieveParams`) |
 
-`service`, `model` and `param` will be generated from `openapi/sdk-ir.json`
-(ADR-0001); the `Learner` retrieve there is hand-written until the generator
-lands.
+`service`, `model` and `param` are generated from `openapi/sdk-ir.json`
+(ADR-0001) by the tool in `generator/`, as are the service accessors between
+the markers in `TeachMeHipaaClient`. Don't edit them: change the IR upstream
+and run `./gradlew generate`. `./gradlew build` fails when they are stale. The
+generator is a build-only source set and never ships in the library jar.
