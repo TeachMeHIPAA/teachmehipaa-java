@@ -8,7 +8,7 @@ import com.teachmehipaa.core.EmptyResponse;
 import com.teachmehipaa.core.Etags;
 import com.teachmehipaa.core.Page;
 import com.teachmehipaa.core.Pagination;
-import com.teachmehipaa.model.Operation;
+import com.teachmehipaa.model.WebhookDeliveryOperation;
 import com.teachmehipaa.model.WebhookSubscription;
 import com.teachmehipaa.model.WebhookSubscriptionCreated;
 import com.teachmehipaa.param.WebhookSubscriptionCreateParams;
@@ -129,7 +129,7 @@ public final class WebhookSubscriptionService {
   }
 
   /** Retry failed deliveries. */
-  public Operation redrive(String subscriptionId) {
+  public WebhookDeliveryOperation redrive(String subscriptionId) {
     return redrive(subscriptionId, RequestOptions.none());
   }
 
@@ -141,10 +141,11 @@ public final class WebhookSubscriptionService {
    *
    * @param subscriptionId The webhook subscription id.
    * @param options settings for this call only, such as a timeout or request id
-   * @return the {@link Operation}, which finishes in the background
+   * @return the {@link WebhookDeliveryOperation}, which may finish in the background: {@code
+   *     waitForCompletion()} polls until it is done
    * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
    */
-  public Operation redrive(String subscriptionId, RequestOptions options) {
+  public WebhookDeliveryOperation redrive(String subscriptionId, RequestOptions options) {
     Objects.requireNonNull(subscriptionId, "subscriptionId");
     Objects.requireNonNull(options, "options");
     ApiRequest request =
@@ -154,7 +155,7 @@ public final class WebhookSubscriptionService {
             .retrySafe()
             .idempotencyKeyRequired()
             .build();
-    return requester.request(request, Operation.class, options);
+    return requester.request(request, WebhookDeliveryOperation.class, options);
   }
 
   /** Retrieve a webhook subscription. */
@@ -235,7 +236,7 @@ public final class WebhookSubscriptionService {
   }
 
   /** Send a test event. */
-  public Operation test(String subscriptionId) {
+  public WebhookDeliveryOperation test(String subscriptionId) {
     return test(subscriptionId, RequestOptions.none());
   }
 
@@ -247,10 +248,11 @@ public final class WebhookSubscriptionService {
    *
    * @param subscriptionId The webhook subscription id.
    * @param options settings for this call only, such as a timeout or request id
-   * @return the {@link Operation}, which finishes in the background
+   * @return the {@link WebhookDeliveryOperation}, which may finish in the background: {@code
+   *     waitForCompletion()} polls until it is done
    * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
    */
-  public Operation test(String subscriptionId, RequestOptions options) {
+  public WebhookDeliveryOperation test(String subscriptionId, RequestOptions options) {
     Objects.requireNonNull(subscriptionId, "subscriptionId");
     Objects.requireNonNull(options, "options");
     ApiRequest request =
@@ -260,7 +262,7 @@ public final class WebhookSubscriptionService {
             .retrySafe()
             .idempotencyKeyRequired()
             .build();
-    return requester.request(request, Operation.class, options);
+    return requester.request(request, WebhookDeliveryOperation.class, options);
   }
 
   /** Update a webhook subscription. */

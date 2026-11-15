@@ -42,11 +42,31 @@ public final class Generator {
    */
   static final Set<String> EXTENDED_RESOURCES = Set.of("events");
 
+  /**
+   * Models with hand-written behaviour, by IR name. The generator writes their fields into a sealed
+   * {@code <Model>Base}; the hand-written {@code <Model>} in the same package extends it and is
+   * what the API reads.
+   */
+  static final Set<String> EXTENDED_MODELS = Set.of("Operation");
+
+  /**
+   * The Operations whose {@code response} has a known shape the spec leaves untyped, by operation
+   * id: these methods return the named hand-written subclass of {@code Operation}.
+   */
+  static final Map<String, String> OPERATION_MODELS =
+      Map.of(
+          "redriveWebhookSubscription", "WebhookDeliveryOperation",
+          "testWebhookSubscription", "WebhookDeliveryOperation");
+
   /** Hand-written files inside {@link #OWNED_DIRECTORIES}, which a run leaves alone. */
   public static final Set<String> HAND_WRITTEN_FILES =
       Set.of(
           "src/main/java/com/teachmehipaa/service/EventService.java",
-          "src/main/java/com/teachmehipaa/param/EventTailParams.java");
+          "src/main/java/com/teachmehipaa/param/EventTailParams.java",
+          "src/main/java/com/teachmehipaa/model/Operation.java",
+          "src/main/java/com/teachmehipaa/model/WebhookDeliveryOperation.java",
+          "src/main/java/com/teachmehipaa/model/WebhookDeliveryResult.java",
+          "src/main/java/com/teachmehipaa/model/ExportResult.java");
 
   /** Hand-written apart from the section between the markers, which the generator owns. */
   public static final String CLIENT_FILE = "src/main/java/com/teachmehipaa/TeachMeHipaaClient.java";
@@ -67,6 +87,17 @@ public final class Generator {
    */
   public static Map<String, String> render(Path root) {
     Surface surface = new Surface(load(root));
+    Set<String> operationIds =
+        surface.methods.stream()
+            .filter(plan -> plan.method().response() instanceof Ir.OperationResponse)
+            .map(plan -> plan.method().operationId())
+            .collect(Collectors.toSet());
+    for (String operationId : OPERATION_MODELS.keySet()) {
+      if (!operationIds.contains(operationId)) {
+        throw new GeneratorException(
+            "OPERATION_MODELS names " + operationId + ", which returns no Operation");
+      }
+    }
     List<JavaFile> files = new ArrayList<>();
     files.addAll(new ModelWriter(surface).files());
     files.addAll(new ParamWriter(surface).files());

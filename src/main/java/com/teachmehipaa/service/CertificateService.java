@@ -92,7 +92,8 @@ public final class CertificateService {
    *
    * @param params the call's parameters
    * @param options settings for this call only, such as a timeout or request id
-   * @return the {@link Operation}, which finishes in the background
+   * @return the {@link Operation}, which may finish in the background: {@code waitForCompletion()}
+   *     polls until it is done
    * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
    */
   public Operation export(CertificateExportParams params, RequestOptions options) {

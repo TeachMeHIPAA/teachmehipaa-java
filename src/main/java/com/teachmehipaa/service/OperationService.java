@@ -28,7 +28,8 @@ public final class OperationService {
    *
    * @param operationId The server-minted opaque operation id.
    * @param options settings for this call only, such as a timeout or request id
-   * @return the {@link Operation}, which finishes in the background
+   * @return the {@link Operation}, which may finish in the background: {@code waitForCompletion()}
+   *     polls until it is done
    * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
    */
   public Operation retrieve(String operationId, RequestOptions options) {

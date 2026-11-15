@@ -49,36 +49,56 @@ final class ModelWriter {
 
   /** {@code doc} is the class comment, already in Javadoc form, or {@code null}. */
   private JavaFile object(String name, String doc, List<Ir.Field> fields) {
-    JavaFile file = new JavaFile(Surface.MODEL_PACKAGE, name);
+    boolean extended = Generator.EXTENDED_MODELS.contains(name);
+    boolean operation = surface.operations.contains(name);
+    if (operation != extended) {
+      throw new GeneratorException(
+          name + ": an Operation model needs hand-written polling, and only Operations have it");
+    }
+    String className = extended ? name + "Base" : name;
+    JavaFile file = new JavaFile(Surface.MODEL_PACKAGE, className);
     boolean resource = surface.resources.contains(name);
-    String base = file.use(CORE + (resource ? "ApiResource" : "ApiModel"));
+    String base =
+        file.use(CORE + (operation ? "ApiOperation" : resource ? "ApiResource" : "ApiModel"));
     Set<String> unions = surface.modelUnionsOf.getOrDefault(name, Set.of());
 
-    file.append(Javadoc.block("", doc));
-    if (!unions.isEmpty()) {
-      file.append(variantAnnotation(file));
+    if (extended) {
+      file.append(
+          Javadoc.block(
+              "",
+              "The generated fields of {@link "
+                  + name
+                  + "}. The API reads the hand-written {@link "
+                  + name
+                  + "}, which adds to them."));
+      file.append("public abstract sealed class " + className + " extends " + base);
+      file.append(" permits " + name + " {\n");
+    } else {
+      file.append(Javadoc.block("", doc));
+      if (!unions.isEmpty()) {
+        file.append(variantAnnotation(file));
+      }
+      file.append("public final class ").append(name).append(" extends ").append(base);
+      if (!unions.isEmpty()) {
+        file.append(" implements ").append(String.join(", ", unions));
+      }
+      file.append(" {\n");
     }
-    file.append("public final class ").append(name).append(" extends ").append(base);
-    if (!unions.isEmpty()) {
-      file.append(" implements ").append(String.join(", ", unions));
-    }
-    file.append(" {\n");
 
     List<Member> members = members(name, fields, file);
     members.forEach(
         member -> file.append("  private final " + member.type + " " + member.identifier + ";\n"));
-    file.append("\n  @").append(file.use("com.fasterxml.jackson.annotation.JsonCreator"));
-    file.append("\n  ").append(name).append("(");
-    String property = file.use("com.fasterxml.jackson.annotation.JsonProperty");
+    // Jackson creates only concrete classes, so the hand-written subclass carries the creator.
+    if (!extended) {
+      file.append("\n  @").append(file.use("com.fasterxml.jackson.annotation.JsonCreator"));
+    }
+    file.append("\n  ").append(className).append("(");
+    String property = extended ? null : file.use("com.fasterxml.jackson.annotation.JsonProperty");
     List<String> parameters = new ArrayList<>();
     members.forEach(
         member ->
             parameters.add(
-                "@"
-                    + property
-                    + "(\""
-                    + member.wireName
-                    + "\") "
+                (extended ? "" : "@" + property + "(\"" + member.wireName + "\") ")
                     + member.type
                     + " "
                     + member.identifier));

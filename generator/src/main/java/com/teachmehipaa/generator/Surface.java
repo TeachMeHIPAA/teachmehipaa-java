@@ -126,6 +126,9 @@ final class Surface {
   /** Models a call returns directly, which carry the response they came from. */
   final Set<String> resources = new TreeSet<>();
 
+  /** Models a call returns as an Operation, which can poll for their final state. */
+  final Set<String> operations = new TreeSet<>();
+
   /** Object and union types rendered in the param package. */
   final Set<String> params = new TreeSet<>();
 
@@ -414,6 +417,7 @@ final class Surface {
         root = named(model.type(), plan.where());
       } else if (response instanceof Ir.OperationResponse operation) {
         root = named(operation.type(), plan.where());
+        operations.add(root);
       } else if (response instanceof Ir.WriteResultResponse writeResult) {
         root = named(writeResult.type(), plan.where());
         Ir.Field created =

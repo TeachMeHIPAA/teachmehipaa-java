@@ -89,11 +89,18 @@ final class ServiceWriter {
           type, "request(request, " + type + ".class, options)", "the {@link " + type + "}");
     }
     if (response instanceof Ir.OperationResponse operation) {
-      String type = model(operation.type(), file);
+      String special = Generator.OPERATION_MODELS.get(plan.method().operationId());
+      String type =
+          special == null
+              ? model(operation.type(), file)
+              : file.use(Surface.MODEL_PACKAGE + "." + special);
       return new Returns(
           type,
           "request(request, " + type + ".class, options)",
-          "the {@link " + type + "}, which finishes in the background");
+          "the {@link "
+              + type
+              + "}, which may finish in the background: {@code waitForCompletion()} polls until"
+              + " it is done");
     }
     if (response instanceof Ir.WriteResultResponse writeResult) {
       String type = model(writeResult.type(), file);

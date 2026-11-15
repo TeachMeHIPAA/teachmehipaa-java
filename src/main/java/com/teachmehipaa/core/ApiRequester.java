@@ -8,6 +8,7 @@ import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.exception.TeachMeHipaaException;
 import java.io.IOException;
 import java.net.URI;
+import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,11 @@ public final class ApiRequester {
   /** Waits between polls, as between retries: the client's injected {@link Sleeper}. */
   public Sleeper sleeper() {
     return config.sleeper();
+  }
+
+  /** Tells the time for poll deadlines: the client's injected {@link Clock}. */
+  public Clock clock() {
+    return config.clock();
   }
 
   /**
@@ -206,9 +212,12 @@ public final class ApiRequester {
     return attach(result, response);
   }
 
-  private static <T> T attach(T result, TransportResponse response) {
+  private <T> T attach(T result, TransportResponse response) {
     if (result instanceof ApiResource resource) {
       resource.attachLastResponse(LastResponse.of(response));
+    }
+    if (result instanceof ApiOperation operation) {
+      operation.attachRequester(this);
     }
     return result;
   }

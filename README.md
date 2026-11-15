@@ -57,3 +57,7 @@ Layout under `src/main/java/com/teachmehipaa/`:
 the markers in `TeachMeHipaaClient`. Don't edit them: change the IR upstream
 and run `./gradlew generate`. `./gradlew build` fails when they are stale. The
 generator is a build-only source set and never ships in the library jar.
+The exceptions are the hand-written files in `Generator.HAND_WRITTEN_FILES`,
+such as `EventService` and `Operation`, which extend a generated `…Base`
+class to add behaviour (tails, `waitForCompletion`, export and delivery
+results).
