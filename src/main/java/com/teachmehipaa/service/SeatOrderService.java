@@ -4,6 +4,7 @@ package com.teachmehipaa.service;
 import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
+import com.teachmehipaa.core.Etags;
 import com.teachmehipaa.core.Page;
 import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.SeatOrder;
@@ -13,6 +14,7 @@ import com.teachmehipaa.param.SeatOrderCreateParams;
 import com.teachmehipaa.param.SeatOrderListParams;
 import com.teachmehipaa.param.SeatOrderQuoteParams;
 import java.util.Objects;
+import java.util.Optional;
 
 /** Seat orders in the client's Organization. Reach it through {@code client.seatOrders()}. */
 public final class SeatOrderService {
@@ -145,5 +147,54 @@ public final class SeatOrderService {
             .retrySafe()
             .build();
     return requester.request(request, SeatOrder.class, options);
+  }
+
+  /** Retrieves the seat order unless the copy you hold is current. */
+  public Optional<SeatOrder> retrieveIfModified(String seatOrderId, String etag) {
+    return retrieveIfModified(seatOrderId, etag, RequestOptions.none());
+  }
+
+  /**
+   * Retrieves the seat order unless the copy you hold is current.
+   *
+   * @throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent
+   */
+  public Optional<SeatOrder> retrieveIfModified(String seatOrderId, SeatOrder cached) {
+    return retrieveIfModified(seatOrderId, cached, RequestOptions.none());
+  }
+
+  /**
+   * Retrieves the seat order unless the copy you hold is current.
+   *
+   * @throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent
+   */
+  public Optional<SeatOrder> retrieveIfModified(
+      String seatOrderId, SeatOrder cached, RequestOptions options) {
+    return retrieveIfModified(seatOrderId, Etags.of(cached), options);
+  }
+
+  /**
+   * Retrieves the seat order only if it changed since you read the copy you hold: sends {@code
+   * If-None-Match}, so an unchanged one costs no body.
+   *
+   * @param seatOrderId The seat order id (<code>so_</code> + ULID).
+   * @param etag the ETag of the copy you hold, from {@code getLastResponse().etag()}
+   * @param options settings for this call only, such as a timeout or request id
+   * @return the {@link SeatOrder} when it changed, or empty when the API answers 304 Not Modified
+   *     and your copy is current
+   * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
+   */
+  public Optional<SeatOrder> retrieveIfModified(
+      String seatOrderId, String etag, RequestOptions options) {
+    Objects.requireNonNull(seatOrderId, "seatOrderId");
+    Objects.requireNonNull(etag, "etag");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/seat-orders/{seatOrderId}")
+            .pathParam("seatOrderId", seatOrderId)
+            .header("if-none-match", etag)
+            .retrySafe()
+            .build();
+    return requester.requestIfModified(request, SeatOrder.class, options);
   }
 }

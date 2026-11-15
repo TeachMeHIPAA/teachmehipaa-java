@@ -15,7 +15,8 @@ import java.util.stream.Collectors;
 final class ParamWriter {
   static final String IF_MATCH_DOC =
       "The ETag the object was read with, from {@code getLastResponse().etag()}. The API refuses a"
-          + " stale one with 412 and a missing one with 428.";
+          + " stale one with 412 and a missing one with 428, both as {@link"
+          + " com.teachmehipaa.exception.PreconditionFailedException}.";
 
   private final Surface surface;
 
@@ -203,6 +204,21 @@ final class ParamWriter {
         file.append("      this." + id + "Set = true;\n");
       }
       file.append("      return this;\n    }\n");
+      if (field.location() == Surface.Location.IF_MATCH) {
+        String resource = file.use("com.teachmehipaa.core.ApiResource");
+        file.append(
+            "\n"
+                + Javadoc.block(
+                    "    ",
+                    List.of(
+                        "Sends the ETag {@code object} was read with, from {@code"
+                            + " getLastResponse().etag()}."),
+                    List.of(
+                        "@throws IllegalArgumentException when {@code object} carries no ETag")));
+        file.append("    public Builder " + id + "(" + resource + " object) {\n");
+        file.append("      this." + id + " = " + file.use("com.teachmehipaa.core.Etags"));
+        file.append(".of(object);\n      return this;\n    }\n");
+      }
       if (field.nullable()) {
         file.append(
             "\n    /** Sends {@code null} for {@code " + field.wireName() + "}, clearing it. */\n");

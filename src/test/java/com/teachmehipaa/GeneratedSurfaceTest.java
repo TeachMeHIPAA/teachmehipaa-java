@@ -104,6 +104,19 @@ class GeneratedSurfaceTest {
   /** Methods with no operation of their own, written by hand on top of generated ones. */
   private static final Set<String> HAND_WRITTEN_METHODS = Set.of("events.tail");
 
+  /**
+   * Generated siblings that send the same operation as the method they name, with a return type
+   * Java can't fold into one signature: a download read as it arrives instead of buffered, and the
+   * IR's optional {@code If-None-Match} reads, which return {@code Optional} so a 304 is empty.
+   */
+  private static final Map<String, String> GENERATED_SIBLINGS =
+      Map.of(
+          "certificates.downloadPdfStream", "certificates.downloadPdf",
+          "courses.retrieveIfModified", "courses.retrieve",
+          "enrollments.retrieveIfModified", "enrollments.retrieve",
+          "seatOrders.retrieveIfModified", "seatOrders.retrieve",
+          "webhookSubscriptions.retrieveIfModified", "webhookSubscriptions.retrieve");
+
   /** IR method names that are Java keywords, and the public name used instead. */
   private static final Map<String, String> KEYWORD_RENAMES =
       Map.of("enrollments.import", "enrollments.importEnrollments");
@@ -183,7 +196,7 @@ class GeneratedSurfaceTest {
   }
 
   @Test
-  void exposesExactlyOnePublicMethodPerIrMethodWithTheExpectedNamePlusTheHandWrittenOnes() {
+  void exposesExactlyOnePublicMethodPerIrMethodWithTheExpectedNamePlusSiblingsAndHandWrittenOnes() {
     TeachMeHipaaClient client =
         TeachMeHipaaClient.builder().clientId(CLIENT_ID).clientSecret(CLIENT_SECRET).build();
     Set<String> expected =
@@ -192,6 +205,8 @@ class GeneratedSurfaceTest {
             .collect(Collectors.toCollection(TreeSet::new));
 
     assertEquals(57, expected.size());
+    assertTrue(expected.containsAll(GENERATED_SIBLINGS.values()));
+    expected.addAll(GENERATED_SIBLINGS.keySet());
     expected.addAll(HAND_WRITTEN_METHODS);
     assertEquals(expected, publicMethods(client.getClass(), ""));
   }

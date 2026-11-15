@@ -1,6 +1,8 @@
 // Generated from openapi/sdk-ir.json by generator/. Do not edit: run ./gradlew generate.
 package com.teachmehipaa.param;
 
+import com.teachmehipaa.core.ApiResource;
+import com.teachmehipaa.core.Etags;
 import java.util.Objects;
 
 /** Parameters for {@code client.learners().offboard(…)}. Immutable. */
@@ -24,7 +26,8 @@ public final class LearnerOffboardParams {
 
   /**
    * The ETag the object was read with, from {@code getLastResponse().etag()}. The API refuses a
-   * stale one with 412 and a missing one with 428.
+   * stale one with 412 and a missing one with 428, both as {@link
+   * com.teachmehipaa.exception.PreconditionFailedException}.
    */
   public String getIfMatch() {
     return ifMatch;
@@ -44,10 +47,21 @@ public final class LearnerOffboardParams {
 
     /**
      * The ETag the object was read with, from {@code getLastResponse().etag()}. The API refuses a
-     * stale one with 412 and a missing one with 428.
+     * stale one with 412 and a missing one with 428, both as {@link
+     * com.teachmehipaa.exception.PreconditionFailedException}.
      */
     public Builder ifMatch(String ifMatch) {
       this.ifMatch = Objects.requireNonNull(ifMatch, "ifMatch");
+      return this;
+    }
+
+    /**
+     * Sends the ETag {@code object} was read with, from {@code getLastResponse().etag()}.
+     *
+     * @throws IllegalArgumentException when {@code object} carries no ETag
+     */
+    public Builder ifMatch(ApiResource object) {
+      this.ifMatch = Etags.of(object);
       return this;
     }
 

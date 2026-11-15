@@ -12,8 +12,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -23,6 +26,15 @@ import java.util.stream.Collectors;
 public final class ApiRequester {
   private static final ApiRequest INTROSPECTION =
       ApiRequest.builder("GET", "/auth/introspection").retrySafe().build();
+
+  // What a response must be for the call to use it; anything else raises. Unknown paths answer
+  // with a 200 HTML page, so a success is only read once its content type says what it is.
+  private static final Predicate<TransportResponse> JSON =
+      response -> isSuccess(response) && Errors.isJson(response);
+  private static final Predicate<TransportResponse> JSON_OR_EMPTY =
+      response -> isSuccess(response) && (Errors.isJson(response) || response.body().length == 0);
+  private static final Predicate<TransportResponse> JSON_OR_NOT_MODIFIED =
+      response -> response.statusCode() == 304 || JSON.test(response);
 
   private final ClientConfig config;
   private final TokenProvider tokens;
@@ -46,7 +58,7 @@ public final class ApiRequester {
    * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
    */
   public <T> T request(ApiRequest request, Class<T> type, RequestOptions options) {
-    TransportResponse response = send(request, options, Expect.JSON);
+    TransportResponse response = send(request, options, JSON);
     return read(response, Json.MAPPER.constructType(type));
   }
 
@@ -57,7 +69,7 @@ public final class ApiRequester {
    * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
    */
   public <T> T requestWriteResult(ApiRequest request, Class<T> type, RequestOptions options) {
-    TransportResponse response = send(request, options, Expect.JSON);
+    TransportResponse response = send(request, options, JSON);
     JsonNode tree = readTree(response);
     if (!(tree instanceof ObjectNode learner)) {
       throw Errors.fromResponse(response, config.clock().instant());
@@ -81,7 +93,7 @@ public final class ApiRequester {
    */
   public <T> Page<T> requestPage(
       ApiRequest request, Pagination pagination, Class<T> itemType, RequestOptions options) {
-    TransportResponse response = send(request, options, Expect.JSON);
+    TransportResponse response = send(request, options, JSON);
     JsonNode tree = readTree(response);
     PageBody<T> body;
     try {
@@ -114,22 +126,70 @@ public final class ApiRequester {
   }
 
   /**
+   * Sends a conditional read, whose {@code If-None-Match} the request carries, and reads a changed
+   * object into {@code type}.
+   *
+   * @return the object, or empty when the API answers 304 Not Modified
+   * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
+   */
+  public <T> Optional<T> requestIfModified(
+      ApiRequest request, Class<T> type, RequestOptions options) {
+    TransportResponse response = send(request, options, JSON_OR_NOT_MODIFIED);
+    if (response.statusCode() == 304) {
+      return Optional.empty();
+    }
+    return Optional.of(read(response, Json.MAPPER.constructType(type)));
+  }
+
+  /**
    * Sends a request whose success has no body, such as a DELETE answered with 204.
    *
    * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
    */
   public EmptyResponse requestEmpty(ApiRequest request, RequestOptions options) {
-    return new EmptyResponse(LastResponse.of(send(request, options, Expect.NOTHING)));
+    return new EmptyResponse(LastResponse.of(send(request, options, JSON_OR_EMPTY)));
   }
 
   /**
-   * Sends a download request and returns the file's bytes as received.
+   * Sends a download request and returns the file's bytes as received. A success of any other media
+   * type, such as an HTML page, raises.
    *
+   * @param mediaType the file's media type, such as {@code application/pdf}
    * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
    */
-  public BinaryResponse requestBinary(ApiRequest request, RequestOptions options) {
-    TransportResponse response = send(request, options, Expect.ANYTHING);
+  public BinaryResponse requestBinary(
+      ApiRequest request, String mediaType, RequestOptions options) {
+    TransportResponse response =
+        send(
+            download(request, mediaType),
+            options,
+            candidate ->
+                isSuccess(candidate) && Errors.hasMediaType(candidate.headers(), mediaType));
     return new BinaryResponse(response.body(), LastResponse.of(response));
+  }
+
+  /**
+   * Sends a download request and returns the file as a stream, read as it arrives. Failures,
+   * including a success of any other media type, raise before the stream is returned, and are
+   * retried like any other; once the stream is returned, nothing is retried.
+   *
+   * @param mediaType the file's media type, such as {@code application/pdf}
+   * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
+   */
+  public BinaryStreamResponse requestBinaryStream(
+      ApiRequest request, String mediaType, RequestOptions options) {
+    StreamingTransportResponse response =
+        sendVia(
+            download(request, mediaType),
+            options,
+            authorized -> exchangeStreaming(authorized, mediaType));
+    return new BinaryStreamResponse(
+        response.body(), LastResponse.of(response.statusCode(), response.headers()));
+  }
+
+  // A failed download answers with a problem document, so the API may send either.
+  private static ApiRequest download(ApiRequest request, String mediaType) {
+    return request.withHeader("accept", mediaType + ", application/problem+json");
   }
 
   private <T> T read(TransportResponse response, JavaType type) {
@@ -161,9 +221,15 @@ public final class ApiRequester {
     }
   }
 
-  private TransportResponse send(ApiRequest request, RequestOptions options, Expect expect) {
+  private TransportResponse send(
+      ApiRequest request, RequestOptions options, Predicate<TransportResponse> usable) {
+    return sendVia(request, options, authorized -> exchange(authorized, usable));
+  }
+
+  private <R> R sendVia(
+      ApiRequest request, RequestOptions options, Function<TransportRequest, R> exchange) {
     String organizationId = request.organizationScoped() ? organizationId() : null;
-    return send(request, organizationId, options, expect);
+    return sendVia(request, organizationId, options, exchange);
   }
 
   // ADR-0003: resolved at most once per client; concurrent first calls share one lookup, and a
@@ -185,7 +251,9 @@ public final class ApiRequester {
   }
 
   private String discoverOrganizationId() {
-    TransportResponse response = send(INTROSPECTION, null, RequestOptions.none(), Expect.JSON);
+    TransportResponse response =
+        sendVia(
+            INTROSPECTION, null, RequestOptions.none(), authorized -> exchange(authorized, JSON));
     JsonNode orgId = readTree(response).path("orgId");
     if (!orgId.isTextual() || orgId.asText().isEmpty()) {
       throw Errors.unexpected(
@@ -196,8 +264,11 @@ public final class ApiRequester {
     return orgId.asText();
   }
 
-  private TransportResponse send(
-      ApiRequest request, String organizationId, RequestOptions options, Expect expect) {
+  private <R> R sendVia(
+      ApiRequest request,
+      String organizationId,
+      RequestOptions options,
+      Function<TransportRequest, R> exchange) {
     TransportRequest prepared = prepare(request, organizationId, options);
     int maxRetries =
         options.getMaxRetries() == null ? config.maxRetries() : options.getMaxRetries();
@@ -208,7 +279,7 @@ public final class ApiRequester {
       // endpoints never mint one.
       String accessToken = request.authenticated() ? tokens.accessToken() : null;
       try {
-        return exchange(prepared, accessToken, expect);
+        return exchange.apply(authorized(prepared, accessToken));
       } catch (TeachMeHipaaException failure) {
         // A token revoked mid-flight gets one re-mint and replay per call. The API refuses a 401
         // before acting, so replaying even a PATCH is safe, and the replay isn't a retry.
@@ -271,29 +342,46 @@ public final class ApiRequester {
         options.getTimeout() == null ? config.timeout() : options.getTimeout());
   }
 
-  private TransportResponse exchange(TransportRequest prepared, String accessToken, Expect expect) {
-    Map<String, String> headers = new LinkedHashMap<>(prepared.headers());
-    if (accessToken != null) {
-      headers.put("authorization", "Bearer " + accessToken);
+  private static TransportRequest authorized(TransportRequest prepared, String accessToken) {
+    if (accessToken == null) {
+      return prepared;
     }
-    TransportResponse response =
-        Transport.send(
-            config,
-            new TransportRequest(
-                prepared.method(), prepared.uri(), headers, prepared.body(), prepared.timeout()));
-    if (response.statusCode() / 100 != 2 || !isUsable(response, expect)) {
+    Map<String, String> headers = new LinkedHashMap<>(prepared.headers());
+    headers.put("authorization", "Bearer " + accessToken);
+    return new TransportRequest(
+        prepared.method(), prepared.uri(), headers, prepared.body(), prepared.timeout());
+  }
+
+  private TransportResponse exchange(
+      TransportRequest authorized, Predicate<TransportResponse> usable) {
+    TransportResponse response = Transport.send(config, authorized);
+    if (!usable.test(response)) {
       throw Errors.fromResponse(response, config.clock().instant());
     }
     return response;
   }
 
-  // A body nobody reads may be empty or JSON, but never the HTML page an unknown path returns.
-  private static boolean isUsable(TransportResponse response, Expect expect) {
-    return switch (expect) {
-      case JSON -> Errors.isJson(response);
-      case NOTHING -> Errors.isJson(response) || response.body().length == 0;
-      case ANYTHING -> true;
-    };
+  // Only a success of the promised media type is handed back as a stream; anything else is read
+  // whole so it can raise like any other failed response.
+  private StreamingTransportResponse exchangeStreaming(
+      TransportRequest authorized, String mediaType) {
+    StreamingTransportResponse response = Transport.sendStreaming(config, authorized);
+    if (response.statusCode() / 100 == 2 && Errors.hasMediaType(response.headers(), mediaType)) {
+      return response;
+    }
+    TransportResponse failed;
+    try (response) {
+      failed =
+          new TransportResponse(
+              response.statusCode(), response.headers(), response.body().readAllBytes());
+    } catch (IOException unreadable) {
+      throw Errors.noResponse(authorized, unreadable);
+    }
+    throw Errors.fromResponse(failed, config.clock().instant());
+  }
+
+  private static boolean isSuccess(TransportResponse response) {
+    return response.statusCode() / 100 == 2;
   }
 
   private static ObjectNode bodyFields(ApiRequest request) {
@@ -334,15 +422,6 @@ public final class ApiRequester {
                     + "="
                     + UrlEncoding.percentEncode(param.getValue()))
         .collect(Collectors.joining("&", "?", ""));
-  }
-
-  /** What a successful response must carry to be usable. */
-  private enum Expect {
-    JSON,
-    /** An empty body, or JSON nobody reads. */
-    NOTHING,
-    /** Any bytes, such as a PDF. */
-    ANYTHING
   }
 
   private record PageBody<T>(List<T> items, String nextCursor) {}

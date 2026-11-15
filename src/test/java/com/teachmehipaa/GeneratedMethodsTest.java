@@ -10,7 +10,6 @@ import static com.teachmehipaa.Fixtures.ORG_ID;
 import static com.teachmehipaa.Fixtures.TOKEN_ROUTE;
 import static com.teachmehipaa.Fixtures.clientFor;
 import static com.teachmehipaa.Fixtures.tokenJson;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -19,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.teachmehipaa.core.BinaryResponse;
 import com.teachmehipaa.core.EmptyResponse;
 import com.teachmehipaa.core.Page;
 import com.teachmehipaa.core.TransportRequest;
@@ -433,30 +431,5 @@ class GeneratedMethodsTest {
             + "--\r\n",
         body);
     assertTrue(UUID_V4.matcher(request.headers().get("idempotency-key")).matches());
-  }
-
-  @Test
-  void aPdfDownloadReturnsItsBytesContentTypeAndFilename() {
-    String route = "GET " + ORG + "/certificates/cert_01JD8Z4N3QX5V7W9Y2B4C6D8EH/content";
-    FakeTransport api =
-        api()
-            .on(
-                route,
-                new Reply(
-                    200,
-                    Map.of(
-                        "content-type",
-                        "application/pdf",
-                        "content-disposition",
-                        "attachment; filename=\"certificate.pdf\""),
-                    "%PDF-1.7\n%%EOF\n"));
-
-    BinaryResponse pdf =
-        clientOn(api).certificates().downloadPdf("cert_01JD8Z4N3QX5V7W9Y2B4C6D8EH");
-
-    assertArrayEquals("%PDF-1.7\n%%EOF\n".getBytes(StandardCharsets.UTF_8), pdf.data());
-    assertEquals("application/pdf", pdf.contentType());
-    assertEquals("certificate.pdf", pdf.filename());
-    assertEquals("application/pdf", only(api, route).headers().get("accept"));
   }
 }

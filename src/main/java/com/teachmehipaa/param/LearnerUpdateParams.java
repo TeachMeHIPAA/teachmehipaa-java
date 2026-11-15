@@ -2,6 +2,8 @@
 package com.teachmehipaa.param;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.teachmehipaa.core.ApiResource;
+import com.teachmehipaa.core.Etags;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -48,7 +50,8 @@ public final class LearnerUpdateParams {
 
   /**
    * The ETag the object was read with, from {@code getLastResponse().etag()}. The API refuses a
-   * stale one with 412 and a missing one with 428.
+   * stale one with 412 and a missing one with 428, both as {@link
+   * com.teachmehipaa.exception.PreconditionFailedException}.
    */
   public String getIfMatch() {
     return ifMatch;
@@ -104,10 +107,21 @@ public final class LearnerUpdateParams {
 
     /**
      * The ETag the object was read with, from {@code getLastResponse().etag()}. The API refuses a
-     * stale one with 412 and a missing one with 428. Required.
+     * stale one with 412 and a missing one with 428, both as {@link
+     * com.teachmehipaa.exception.PreconditionFailedException}. Required.
      */
     public Builder ifMatch(String ifMatch) {
       this.ifMatch = Objects.requireNonNull(ifMatch, "ifMatch");
+      return this;
+    }
+
+    /**
+     * Sends the ETag {@code object} was read with, from {@code getLastResponse().etag()}.
+     *
+     * @throws IllegalArgumentException when {@code object} carries no ETag
+     */
+    public Builder ifMatch(ApiResource object) {
+      this.ifMatch = Etags.of(object);
       return this;
     }
 

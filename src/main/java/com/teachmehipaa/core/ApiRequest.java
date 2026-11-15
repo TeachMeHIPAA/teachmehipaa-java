@@ -120,6 +120,25 @@ public record ApiRequest(
         fileParts);
   }
 
+  /** This request with the header set to {@code value}, replacing any it had. */
+  ApiRequest withHeader(String name, String value) {
+    Map<String, String> merged = new LinkedHashMap<>(headers);
+    merged.put(name.toLowerCase(Locale.ROOT), Objects.requireNonNull(value, name));
+    return new ApiRequest(
+        method,
+        pathTemplate,
+        pathParams,
+        queryParams,
+        merged,
+        authenticated,
+        retrySafe,
+        idempotencyKeyRequired,
+        body,
+        encoding,
+        fixedBodyValues,
+        fileParts);
+  }
+
   /** Whether the path needs the client's Organization. */
   public boolean organizationScoped() {
     return pathTemplate.contains("{" + ORGANIZATION_PARAM + "}");

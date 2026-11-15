@@ -5,6 +5,7 @@ import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.core.EmptyResponse;
+import com.teachmehipaa.core.Etags;
 import com.teachmehipaa.core.Page;
 import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.Operation;
@@ -14,6 +15,7 @@ import com.teachmehipaa.param.WebhookSubscriptionCreateParams;
 import com.teachmehipaa.param.WebhookSubscriptionListParams;
 import com.teachmehipaa.param.WebhookSubscriptionUpdateParams;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Webhook subscriptions in the client's Organization. Reach it through {@code
@@ -180,6 +182,56 @@ public final class WebhookSubscriptionService {
             .retrySafe()
             .build();
     return requester.request(request, WebhookSubscription.class, options);
+  }
+
+  /** Retrieves the webhook subscription unless the copy you hold is current. */
+  public Optional<WebhookSubscription> retrieveIfModified(String subscriptionId, String etag) {
+    return retrieveIfModified(subscriptionId, etag, RequestOptions.none());
+  }
+
+  /**
+   * Retrieves the webhook subscription unless the copy you hold is current.
+   *
+   * @throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent
+   */
+  public Optional<WebhookSubscription> retrieveIfModified(
+      String subscriptionId, WebhookSubscription cached) {
+    return retrieveIfModified(subscriptionId, cached, RequestOptions.none());
+  }
+
+  /**
+   * Retrieves the webhook subscription unless the copy you hold is current.
+   *
+   * @throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent
+   */
+  public Optional<WebhookSubscription> retrieveIfModified(
+      String subscriptionId, WebhookSubscription cached, RequestOptions options) {
+    return retrieveIfModified(subscriptionId, Etags.of(cached), options);
+  }
+
+  /**
+   * Retrieves the webhook subscription only if it changed since you read the copy you hold: sends
+   * {@code If-None-Match}, so an unchanged one costs no body.
+   *
+   * @param subscriptionId The webhook subscription id.
+   * @param etag the ETag of the copy you hold, from {@code getLastResponse().etag()}
+   * @param options settings for this call only, such as a timeout or request id
+   * @return the {@link WebhookSubscription} when it changed, or empty when the API answers 304 Not
+   *     Modified and your copy is current
+   * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
+   */
+  public Optional<WebhookSubscription> retrieveIfModified(
+      String subscriptionId, String etag, RequestOptions options) {
+    Objects.requireNonNull(subscriptionId, "subscriptionId");
+    Objects.requireNonNull(etag, "etag");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/webhook-subscriptions/{subscriptionId}")
+            .pathParam("subscriptionId", subscriptionId)
+            .header("if-none-match", etag)
+            .retrySafe()
+            .build();
+    return requester.requestIfModified(request, WebhookSubscription.class, options);
   }
 
   /** Send a test event. */

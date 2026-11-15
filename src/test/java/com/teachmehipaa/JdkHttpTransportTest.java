@@ -11,11 +11,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import com.teachmehipaa.core.BinaryStreamResponse;
 import com.teachmehipaa.core.JdkHttpTransport;
 import com.teachmehipaa.core.TransportRequest;
 import com.teachmehipaa.core.TransportResponse;
 import com.teachmehipaa.model.Learner;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -25,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -119,6 +124,55 @@ class JdkHttpTransportTest {
         List.of("POST /v1/auth/token", "GET /v1/organizations/org_acme/learners/" + LEARNER_ID),
         received.stream().map(request -> request.method() + " " + request.path()).toList());
     assertEquals(List.of("Bearer local.token"), received.get(1).headers().get("Authorization"));
+  }
+
+  @Test
+  void aStreamedDownloadHandsOverBytesAsTheyArrive() throws IOException {
+    byte[] everyByte = new byte[256];
+    for (int value = 0; value < everyByte.length; value++) {
+      everyByte[value] = (byte) value;
+    }
+    CountDownLatch firstHalfRead = new CountDownLatch(1);
+    server.createContext(
+        "/v1/organizations/org_acme/certificates/",
+        exchange -> {
+          exchange.getResponseHeaders().add("Content-Type", "application/pdf");
+          exchange.sendResponseHeaders(200, 0);
+          OutputStream body = exchange.getResponseBody();
+          body.write(everyByte, 0, 128);
+          body.flush();
+          // A transport that buffered the whole body would never let the caller read this far, so
+          // the rest is withheld and the response cut short.
+          boolean streamed;
+          try {
+            streamed = firstHalfRead.await(5, TimeUnit.SECONDS);
+          } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            streamed = false;
+          }
+          if (streamed) {
+            body.write(everyByte, 128, 128);
+            exchange.close();
+          } else {
+            exchange.getHttpContext().getServer().stop(0);
+          }
+        });
+    TeachMeHipaaClient client =
+        TeachMeHipaaClient.builder()
+            .clientId(CLIENT_ID)
+            .clientSecret(CLIENT_SECRET)
+            .baseUrl(origin + "/v1")
+            .organizationId("org_acme")
+            .build();
+
+    ByteArrayOutputStream received = new ByteArrayOutputStream();
+    try (BinaryStreamResponse pdf = client.certificates().downloadPdfStream("cert_1")) {
+      received.writeBytes(pdf.inputStream().readNBytes(128));
+      firstHalfRead.countDown();
+      received.writeBytes(pdf.inputStream().readAllBytes());
+    }
+
+    assertArrayEquals(everyByte, received.toByteArray());
   }
 
   @Test

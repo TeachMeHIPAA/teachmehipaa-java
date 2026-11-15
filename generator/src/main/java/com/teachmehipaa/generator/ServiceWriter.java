@@ -3,6 +3,7 @@ package com.teachmehipaa.generator;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -66,7 +67,13 @@ final class ServiceWriter {
       file.append("    return new " + child.serviceClass() + "(requester);\n  }\n");
     }
     for (Surface.MethodPlan plan : node.methods()) {
-      method(file, plan);
+      method(file, plan, plan.javaName(), returns(plan, file));
+      if (plan.streamName() != null) {
+        method(file, plan, plan.streamName(), streamReturns(plan, file));
+      }
+      if (plan.ifModifiedName() != null) {
+        ifModified(file, plan);
+      }
     }
     return file.append("}\n");
   }
@@ -128,17 +135,29 @@ final class ServiceWriter {
     }
     return new Returns(
         file.use(CORE + "BinaryResponse"),
-        "requestBinary(request, options)",
+        "requestBinary(request, " + mediaType(plan) + ", options)",
         "the file's bytes, content type and filename");
+  }
+
+  // A sibling of each download: the same request, its body handed over unread.
+  private static Returns streamReturns(Surface.MethodPlan plan, JavaFile file) {
+    return new Returns(
+        file.use(CORE + "BinaryStreamResponse"),
+        "requestBinaryStream(request, " + mediaType(plan) + ", options)",
+        "the file as a stream, with its content type and filename; close it to release the"
+            + " connection");
+  }
+
+  private static String mediaType(Surface.MethodPlan plan) {
+    return ModelWriter.literal(((Ir.BinaryResponse) plan.method().response()).contentType());
   }
 
   private static String model(Ir.TypeRef ref, JavaFile file) {
     return file.use(Surface.MODEL_PACKAGE + "." + ((Ir.Ref) ref).name());
   }
 
-  private void method(JavaFile file, Surface.MethodPlan plan) {
+  private void method(JavaFile file, Surface.MethodPlan plan, String javaName, Returns returns) {
     Ir.Method method = plan.method();
-    Returns returns = returns(plan, file);
     String options = file.use("com.teachmehipaa.RequestOptions");
     String params =
         plan.hasParams() ? file.use(Surface.PARAM_PACKAGE + "." + plan.paramsClass()) : null;
@@ -172,10 +191,9 @@ final class ServiceWriter {
       forwarded.add(
           extra.stream().anyMatch(p -> p.endsWith(" options")) ? "options" : options + ".none()");
       file.append("\n").append(Javadoc.block("  ", summary));
-      file.append("  public " + returns.type() + " " + plan.javaName() + "(");
+      file.append("  public " + returns.type() + " " + javaName + "(");
       file.append(String.join(", ", parameters) + ") {\n");
-      file.append(
-          "    return " + plan.javaName() + "(" + String.join(", ", forwarded) + ");\n  }\n");
+      file.append("    return " + javaName + "(" + String.join(", ", forwarded) + ");\n  }\n");
     }
 
     List<String> tags = new ArrayList<>();
@@ -201,7 +219,7 @@ final class ServiceWriter {
       parameters.add(params + " params");
     }
     parameters.add(options + " options");
-    file.append("  public " + returns.type() + " " + plan.javaName() + "(");
+    file.append("  public " + returns.type() + " " + javaName + "(");
     file.append(String.join(", ", parameters) + ") {\n");
     String objects = file.use("java.util.Objects");
     for (String argument : pathArguments) {
@@ -211,6 +229,14 @@ final class ServiceWriter {
       file.append("    " + objects + ".requireNonNull(params, \"params\");\n");
     }
     file.append("    " + objects + ".requireNonNull(options, \"options\");\n");
+    appendRequest(file, plan, null);
+    file.append("    return requester." + returns.call() + ";\n  }\n");
+  }
+
+  /** Writes {@code ApiRequest request = ...;} for the plan, optionally conditional. */
+  private static void appendRequest(JavaFile file, Surface.MethodPlan plan, String ifNoneMatch) {
+    Ir.Method method = plan.method();
+    List<String> pathArguments = plan.pathArguments();
     String apiRequest = file.use(CORE + "ApiRequest");
     file.append("    " + apiRequest + " request =\n        " + apiRequest + ".builder(");
     file.append(ModelWriter.literal(method.httpMethod()) + ", ");
@@ -231,9 +257,8 @@ final class ServiceWriter {
         file.append("            .header(\"if-match\", " + getter + ")\n");
       }
     }
-    if (method.response() instanceof Ir.BinaryResponse binary) {
-      file.append(
-          "            .header(\"accept\", " + ModelWriter.literal(binary.contentType()) + ")\n");
+    if (ifNoneMatch != null) {
+      file.append("            .header(\"if-none-match\", " + ifNoneMatch + ")\n");
     }
     if ("none".equals(method.security().kind())) {
       file.append("            .unauthenticated()\n");
@@ -267,7 +292,104 @@ final class ServiceWriter {
       }
     }
     file.append("            .build();\n");
-    file.append("    return requester." + returns.call() + ";\n  }\n");
+  }
+
+  private void ifModified(JavaFile file, Surface.MethodPlan plan) {
+    Ir.Method method = plan.method();
+    String name = plan.ifModifiedName();
+    String type = model(((Ir.ModelResponse) method.response()).type(), file);
+    String optional = file.use("java.util.Optional");
+    String options = file.use("com.teachmehipaa.RequestOptions");
+    String objects = file.use("java.util.Objects");
+    List<String> pathArguments = plan.pathArguments();
+    String head =
+        pathArguments.stream().map(arg -> "String " + arg + ", ").collect(Collectors.joining());
+    String forwarded = pathArguments.stream().map(arg -> arg + ", ").collect(Collectors.joining());
+    String returnType = optional + "<" + type + ">";
+    String what = Naming.words(type).toLowerCase(Locale.ROOT);
+    String summary = "Retrieves the " + what + " unless the copy you hold is current.";
+
+    file.append("\n").append(Javadoc.block("  ", summary));
+    file.append("  public " + returnType + " " + name + "(" + head + "String etag) {\n");
+    file.append("    return " + name + "(" + forwarded + "etag, " + options + ".none());\n  }\n");
+
+    file.append("\n")
+        .append(
+            Javadoc.block(
+                "  ",
+                List.of(summary),
+                List.of(
+                    "@throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent")));
+    file.append("  public " + returnType + " " + name + "(" + head + type + " cached) {\n");
+    file.append("    return " + name + "(" + forwarded + "cached, " + options + ".none());\n  }\n");
+
+    file.append("\n")
+        .append(
+            Javadoc.block(
+                "  ",
+                List.of(summary),
+                List.of(
+                    "@throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent")));
+    file.append(
+        "  public "
+            + returnType
+            + " "
+            + name
+            + "("
+            + head
+            + type
+            + " cached, "
+            + options
+            + " options) {\n");
+    file.append(
+        "    return "
+            + name
+            + "("
+            + forwarded
+            + file.use(CORE + "Etags")
+            + ".of(cached), options);\n  }\n");
+
+    List<String> tags = new ArrayList<>();
+    for (Ir.Param param : method.pathParams()) {
+      String doc = Javadoc.present(param.description()) ? Javadoc.text(param.description()) : "";
+      tags.add(("@param " + param.name() + " " + doc).trim());
+    }
+    tags.add("@param etag the ETag of the copy you hold, from {@code getLastResponse().etag()}");
+    tags.add("@param options settings for this call only, such as a timeout or request id");
+    tags.add(
+        "@return the {@link "
+            + type
+            + "} when it changed, or empty when the API answers 304 Not"
+            + " Modified and your copy is current");
+    tags.add(THROWS);
+    file.append("\n")
+        .append(
+            Javadoc.block(
+                "  ",
+                List.of(
+                    "Retrieves the "
+                        + what
+                        + " only if it changed since you read the copy you hold: sends"
+                        + " {@code If-None-Match}, so an unchanged one costs no body."),
+                tags));
+    file.append(
+        "  public "
+            + returnType
+            + " "
+            + name
+            + "("
+            + head
+            + "String etag, "
+            + options
+            + " options) {\n");
+    for (String argument : pathArguments) {
+      file.append("    " + objects + ".requireNonNull(" + argument + ", \"" + argument + "\");\n");
+    }
+    file.append("    " + objects + ".requireNonNull(etag, \"etag\");\n");
+    file.append("    " + objects + ".requireNonNull(options, \"options\");\n");
+    appendRequest(file, plan, "etag");
+    file.append(
+        "    return requester.requestIfModified(request, " + type + ".class, options);\n  }\n");
   }
 
   private static List<String> nonNull(String... paragraphs) {

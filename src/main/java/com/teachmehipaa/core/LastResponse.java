@@ -17,10 +17,14 @@ public record LastResponse(int statusCode, HttpHeaders headers, String requestId
   }
 
   static LastResponse of(TransportResponse response) {
+    return of(response.statusCode(), response.headers());
+  }
+
+  static LastResponse of(int statusCode, HttpHeaders headers) {
     return new LastResponse(
-        response.statusCode(),
-        response.headers(),
-        response.headers().firstValue("x-request-id").orElse(null),
-        response.headers().firstValue("etag").orElse(null));
+        statusCode,
+        headers,
+        headers.firstValue("x-request-id").orElse(null),
+        headers.firstValue("etag").orElse(null));
   }
 }

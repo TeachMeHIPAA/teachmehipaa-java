@@ -5,6 +5,7 @@ import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.core.BinaryResponse;
+import com.teachmehipaa.core.BinaryStreamResponse;
 import com.teachmehipaa.core.Page;
 import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.Certificate;
@@ -45,10 +46,37 @@ public final class CertificateService {
     ApiRequest request =
         ApiRequest.builder("GET", "/organizations/{orgId}/certificates/{certId}/content")
             .pathParam("certId", certId)
-            .header("accept", "application/pdf")
             .retrySafe()
             .build();
-    return requester.requestBinary(request, options);
+    return requester.requestBinary(request, "application/pdf", options);
+  }
+
+  /** Download a certificate. */
+  public BinaryStreamResponse downloadPdfStream(String certId) {
+    return downloadPdfStream(certId, RequestOptions.none());
+  }
+
+  /**
+   * Download a certificate.
+   *
+   * <p>Downloads the certificate as a PDF. Revoked and expired certificates are watermarked.
+   * Requires the <code>certificates:read</code> scope.
+   *
+   * @param certId
+   * @param options settings for this call only, such as a timeout or request id
+   * @return the file as a stream, with its content type and filename; close it to release the
+   *     connection
+   * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
+   */
+  public BinaryStreamResponse downloadPdfStream(String certId, RequestOptions options) {
+    Objects.requireNonNull(certId, "certId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/certificates/{certId}/content")
+            .pathParam("certId", certId)
+            .retrySafe()
+            .build();
+    return requester.requestBinaryStream(request, "application/pdf", options);
   }
 
   /** Export certificates. */

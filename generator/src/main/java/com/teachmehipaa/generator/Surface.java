@@ -76,6 +76,28 @@ final class Surface {
     boolean hasParams() {
       return paramsClass != null;
     }
+
+    /** The sibling that returns a binary response as a stream, or {@code null}. */
+    String streamName() {
+      return method.response() instanceof Ir.BinaryResponse ? javaName + "Stream" : null;
+    }
+
+    /** The sibling that sends {@code If-None-Match}, or {@code null}. */
+    String ifModifiedName() {
+      return "optional".equals(method.ifNoneMatch()) ? javaName + "IfModified" : null;
+    }
+
+    /** Every public method name this plan generates. */
+    List<String> javaNames() {
+      List<String> names = new ArrayList<>(List.of(javaName));
+      if (streamName() != null) {
+        names.add(streamName());
+      }
+      if (ifModifiedName() != null) {
+        names.add(ifModifiedName());
+      }
+      return names;
+    }
   }
 
   /** A node of the client's resource tree: {@code partners} holds {@code organizations}. */
@@ -253,6 +275,11 @@ final class Surface {
     }
     if (body != null && fields.stream().noneMatch(field -> field.location() == Location.BODY)) {
       throw new GeneratorException(where + ": a body every field of which is fixed has no rule");
+    }
+    if ("optional".equals(method.ifNoneMatch())
+        && (!(method.response() instanceof Ir.ModelResponse) || !fields.isEmpty())) {
+      throw new GeneratorException(
+          where + ": If-None-Match has a rule only for a model read without parameters");
     }
     String paramsClass = fields.isEmpty() ? null : Naming.paramsClass(resourcePath, method.name());
     boolean paramsRequired =
@@ -603,12 +630,15 @@ final class Surface {
         roots.values(),
         node -> {
           Set<String> javaNames = new TreeSet<>();
-          node.methods()
+          node.methods().stream()
+              .flatMap(plan -> plan.javaNames().stream().map(name -> Map.entry(plan, name)))
               .forEach(
-                  plan -> {
-                    if (!javaNames.add(plan.javaName())) {
+                  named -> {
+                    if (!javaNames.add(named.getValue())) {
                       throw new GeneratorException(
-                          plan.where() + ": two methods share the name " + plan.javaName());
+                          named.getKey().where()
+                              + ": two methods share the name "
+                              + named.getValue());
                     }
                   });
           if (node.children().keySet().stream().anyMatch(javaNames::contains)) {

@@ -17,6 +17,7 @@ import com.teachmehipaa.exception.PreconditionFailedException;
 import com.teachmehipaa.exception.RateLimitException;
 import com.teachmehipaa.exception.TeachMeHipaaException;
 import java.io.IOException;
+import java.net.http.HttpHeaders;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -38,6 +39,14 @@ final class Errors {
         .headers()
         .firstValue("content-type")
         .map(type -> JSON_CONTENT_TYPE.matcher(type).find())
+        .orElse(false);
+  }
+
+  /** Whether the {@code Content-Type} names {@code mediaType}, whatever its parameters. */
+  static boolean hasMediaType(HttpHeaders headers, String mediaType) {
+    return headers
+        .firstValue("content-type")
+        .map(type -> type.split(";", 2)[0].trim().equalsIgnoreCase(mediaType))
         .orElse(false);
   }
 

@@ -8,7 +8,11 @@ import java.util.List;
 import java.util.Map;
 
 /** One scripted HTTP response. JSON bodies are written as literal text, never by the SDK. */
-record Reply(int status, Map<String, String> headers, String body) {
+record Reply(int status, Map<String, String> headers, byte[] body) {
+  Reply(int status, Map<String, String> headers, String body) {
+    this(status, headers, body.getBytes(StandardCharsets.UTF_8));
+  }
+
   static Reply json(String body) {
     return json(200, body);
   }
@@ -23,7 +27,7 @@ record Reply(int status, Map<String, String> headers, String body) {
 
   /** A success with no body, such as a 204. */
   static Reply empty(int status) {
-    return new Reply(status, Map.of(), "");
+    return new Reply(status, Map.of(), new byte[0]);
   }
 
   Reply withHeader(String name, String value) {
@@ -35,9 +39,6 @@ record Reply(int status, Map<String, String> headers, String body) {
   TransportResponse toResponse() {
     Map<String, List<String>> multi = new LinkedHashMap<>();
     headers.forEach((name, value) -> multi.put(name, List.of(value)));
-    return new TransportResponse(
-        status,
-        HttpHeaders.of(multi, (name, value) -> true),
-        body.getBytes(StandardCharsets.UTF_8));
+    return new TransportResponse(status, HttpHeaders.of(multi, (name, value) -> true), body);
   }
 }
