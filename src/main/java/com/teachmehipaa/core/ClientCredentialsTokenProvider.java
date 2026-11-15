@@ -1,6 +1,7 @@
 package com.teachmehipaa.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.teachmehipaa.exception.TeachMeHipaaException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -15,7 +16,8 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Mints Access tokens with the OAuth client-credentials grant, authenticating with the API client's
  * id and secret. It caches the token, mints a new one 60 seconds before the old one expires, and
- * makes concurrent callers share a single mint.
+ * makes concurrent callers share a single mint. A mint that fails on the network or with a 5xx is
+ * retried like any request, since each one mints a fresh token.
  */
 public final class ClientCredentialsTokenProvider implements TokenProvider {
   private static final Duration REMINT_MARGIN = Duration.ofSeconds(60);
@@ -64,12 +66,41 @@ public final class ClientCredentialsTokenProvider implements TokenProvider {
     }
   }
 
+  @Override
+  public void invalidate(String accessToken) {
+    mintLock.lock();
+    try {
+      CachedToken token = current;
+      if (token != null && token.value().equals(accessToken)) {
+        current = null;
+      }
+    } finally {
+      mintLock.unlock();
+    }
+  }
+
   private boolean isFresh(CachedToken token) {
     return token != null
         && config.clock().instant().isBefore(token.expiresAt().minus(REMINT_MARGIN));
   }
 
   private CachedToken mint() {
+    for (int retryNumber = 1; ; retryNumber++) {
+      try {
+        return mintOnce();
+      } catch (TeachMeHipaaException failure) {
+        if (retryNumber > config.maxRetries() || !isNetworkOrServerFailure(failure)) {
+          throw failure;
+        }
+        Retries.sleep(
+            config.sleeper(),
+            Retries.delay(failure, retryNumber, config.clock().instant()),
+            failure);
+      }
+    }
+  }
+
+  private CachedToken mintOnce() {
     TransportRequest request =
         new TransportRequest(
             "POST",
@@ -88,14 +119,19 @@ public final class ClientCredentialsTokenProvider implements TokenProvider {
     // Expiry counts from when the request left, so a slow response can't stretch the token past
     // its real lifetime.
     Instant requestedAt = config.clock().instant();
-    TransportResponse response = Transport.send(config.transport(), request);
+    TransportResponse response = Transport.send(config, request);
     JsonNode token = tokenBody(response);
     if (token == null) {
-      throw Errors.fromOAuthError(response);
+      throw Errors.fromOAuthError(response, config.clock().instant());
     }
     return new CachedToken(
         token.get("access_token").asText(),
         requestedAt.plusSeconds(token.get("expires_in").asLong()));
+  }
+
+  // A refusal such as invalid_client would only be refused again.
+  private static boolean isNetworkOrServerFailure(TeachMeHipaaException failure) {
+    return failure.getStatusCode() == null || failure.getStatusCode() >= 500;
   }
 
   private static JsonNode tokenBody(TransportResponse response) {

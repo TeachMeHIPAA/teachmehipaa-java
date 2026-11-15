@@ -1,6 +1,7 @@
 package com.teachmehipaa.core;
 
 import com.teachmehipaa.AppInfo;
+import com.teachmehipaa.RequestLogger;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.Objects;
  * @param transport sends every HTTP request
  * @param clock tells the time for token expiry
  * @param sleeper waits between retries
+ * @param logger receives an entry per response, or {@code null} for no logging
  */
 public record ClientConfig(
     String baseUrl,
@@ -29,7 +31,8 @@ public record ClientConfig(
     AppInfo appInfo,
     HttpTransport transport,
     Clock clock,
-    Sleeper sleeper) {
+    Sleeper sleeper,
+    RequestLogger logger) {
   public ClientConfig {
     Objects.requireNonNull(baseUrl, "baseUrl");
     scopes = List.copyOf(scopes);

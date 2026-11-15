@@ -21,6 +21,11 @@ record Reply(int status, Map<String, String> headers, String body) {
     return new Reply(status, Map.of("content-type", "application/problem+json"), body);
   }
 
+  /** A success with no body, such as a 204. */
+  static Reply empty(int status) {
+    return new Reply(status, Map.of(), "");
+  }
+
   Reply withHeader(String name, String value) {
     Map<String, String> merged = new LinkedHashMap<>(headers);
     merged.put(name, value);

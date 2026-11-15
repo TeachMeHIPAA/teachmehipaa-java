@@ -19,12 +19,23 @@ import java.util.regex.Pattern;
  * @param pathTemplate the path relative to the base URL, with {@code {name}} placeholders
  * @param pathParams values for the placeholders other than {@code orgId}
  * @param queryParams query parameters, in order
+ * @param retrySafe the IR's {@code retrySafe}: whether a transient failure may be retried. GETs,
+ *     calls that carry a generated Idempotency-Key and calls idempotent by meaning are; PATCH and
+ *     DELETE never are, Idempotency-Key or not
+ * @param idempotencyKeyRequired the IR's {@code idempotencyKey: required}: each call gets one
+ *     generated key, reused by its retries, unless the caller passes their own
+ * @param body the request body, serialized as JSON, or {@code null}
+ * @param contentType the body's media type, or {@code null} when there is no body
  */
 public record ApiRequest(
     String method,
     String pathTemplate,
     Map<String, String> pathParams,
-    Map<String, String> queryParams) {
+    Map<String, String> queryParams,
+    boolean retrySafe,
+    boolean idempotencyKeyRequired,
+    Object body,
+    String contentType) {
   private static final Pattern PLACEHOLDER = Pattern.compile("\\{(\\w+)}");
   private static final String ORGANIZATION_PARAM = "orgId";
 
@@ -64,6 +75,10 @@ public record ApiRequest(
     private final String pathTemplate;
     private final Map<String, String> pathParams = new LinkedHashMap<>();
     private final Map<String, String> queryParams = new LinkedHashMap<>();
+    private boolean retrySafe;
+    private boolean idempotencyKeyRequired;
+    private Object body;
+    private String contentType;
 
     private Builder(String method, String pathTemplate) {
       this.method = method;
@@ -83,8 +98,44 @@ public record ApiRequest(
       return this;
     }
 
+    /** Marks a transient failure as safe to retry. Off by default. */
+    public Builder retrySafe() {
+      this.retrySafe = true;
+      return this;
+    }
+
+    /** Sends a generated {@code Idempotency-Key} with the call. */
+    public Builder idempotencyKeyRequired() {
+      this.idempotencyKeyRequired = true;
+      return this;
+    }
+
+    /** Sends {@code body} as {@code application/json}. */
+    public Builder jsonBody(Object body) {
+      return body(body, "application/json");
+    }
+
+    /** Sends {@code body} as an RFC 7396 merge patch, where {@code null} clears a field. */
+    public Builder mergePatchBody(Object body) {
+      return body(body, "application/merge-patch+json");
+    }
+
+    private Builder body(Object body, String contentType) {
+      this.body = Objects.requireNonNull(body, "body");
+      this.contentType = contentType;
+      return this;
+    }
+
     public ApiRequest build() {
-      return new ApiRequest(method, pathTemplate, pathParams, queryParams);
+      return new ApiRequest(
+          method,
+          pathTemplate,
+          pathParams,
+          queryParams,
+          retrySafe,
+          idempotencyKeyRequired,
+          body,
+          contentType);
     }
   }
 }

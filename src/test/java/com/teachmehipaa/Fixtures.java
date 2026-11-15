@@ -98,11 +98,13 @@ final class Fixtures {
     return learnerRetrieveApi("/v1");
   }
 
+  /** A client on the fake API that records retry waits instead of sleeping. */
   static TeachMeHipaaClient.Builder clientFor(FakeTransport api) {
     return TeachMeHipaaClient.builder()
         .clientId(CLIENT_ID)
         .clientSecret(CLIENT_SECRET)
-        .httpTransport(api);
+        .httpTransport(api)
+        .sleeper(new FakeSleeper());
   }
 
   private Fixtures() {}

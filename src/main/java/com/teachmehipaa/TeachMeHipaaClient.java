@@ -7,6 +7,7 @@ import com.teachmehipaa.core.HttpTransport;
 import com.teachmehipaa.core.JdkHttpTransport;
 import com.teachmehipaa.core.Sleeper;
 import com.teachmehipaa.service.LearnerService;
+import com.teachmehipaa.service.WebhookSubscriptionService;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
@@ -35,6 +36,7 @@ public final class TeachMeHipaaClient {
   private final Environment environment;
   private final ClientConfig config;
   private final LearnerService learners;
+  private final WebhookSubscriptionService webhookSubscriptions;
 
   private TeachMeHipaaClient(Builder builder, ClientConfig config) {
     this.environment = builder.environment;
@@ -44,6 +46,7 @@ public final class TeachMeHipaaClient {
             config,
             new ClientCredentialsTokenProvider(builder.clientId, builder.clientSecret, config));
     this.learners = new LearnerService(requester);
+    this.webhookSubscriptions = new WebhookSubscriptionService(requester);
   }
 
   public static Builder builder() {
@@ -52,6 +55,10 @@ public final class TeachMeHipaaClient {
 
   public LearnerService learners() {
     return learners;
+  }
+
+  public WebhookSubscriptionService webhookSubscriptions() {
+    return webhookSubscriptions;
   }
 
   public Environment getEnvironment() {
@@ -105,6 +112,7 @@ public final class TeachMeHipaaClient {
     private Clock clock = Clock.systemUTC();
     private Sleeper sleeper = Sleeper.SYSTEM;
     private AppInfo appInfo;
+    private RequestLogger logger;
 
     private Builder() {}
 
@@ -206,6 +214,15 @@ public final class TeachMeHipaaClient {
     }
 
     /**
+     * Turns on logging: one entry per response with its method, path, status, latency and request
+     * id, never bodies or credentials. Off by default.
+     */
+    public Builder logger(RequestLogger logger) {
+      this.logger = Objects.requireNonNull(logger, "logger");
+      return this;
+    }
+
+    /**
      * @throws IllegalStateException when the client id or secret is missing
      */
     public TeachMeHipaaClient build() {
@@ -222,7 +239,8 @@ public final class TeachMeHipaaClient {
               appInfo,
               httpTransport != null ? httpTransport : new JdkHttpTransport(),
               clock,
-              sleeper);
+              sleeper,
+              logger);
       return new TeachMeHipaaClient(this, config);
     }
 

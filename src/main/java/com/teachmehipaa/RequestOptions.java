@@ -9,10 +9,14 @@ public final class RequestOptions {
 
   private final String requestId;
   private final Duration timeout;
+  private final Integer maxRetries;
+  private final String idempotencyKey;
 
   private RequestOptions(Builder builder) {
     this.requestId = builder.requestId;
     this.timeout = builder.timeout;
+    this.maxRetries = builder.maxRetries;
+    this.idempotencyKey = builder.idempotencyKey;
   }
 
   /** Options that override nothing. */
@@ -34,9 +38,21 @@ public final class RequestOptions {
     return timeout;
   }
 
+  /** Retries for this call, or {@code null} to use the client's. */
+  public Integer getMaxRetries() {
+    return maxRetries;
+  }
+
+  /** The {@code Idempotency-Key} to send instead of a generated one, or {@code null}. */
+  public String getIdempotencyKey() {
+    return idempotencyKey;
+  }
+
   public static final class Builder {
     private String requestId;
     private Duration timeout;
+    private Integer maxRetries;
+    private String idempotencyKey;
 
     private Builder() {}
 
@@ -56,6 +72,32 @@ public final class RequestOptions {
         throw new IllegalArgumentException("timeout must be positive");
       }
       this.timeout = timeout;
+      return this;
+    }
+
+    /**
+     * Retries for this call if it fails transiently. Only requests that are safe to replay are ever
+     * retried, whatever this says.
+     */
+    public Builder maxRetries(int maxRetries) {
+      if (maxRetries < 0) {
+        throw new IllegalArgumentException("maxRetries must be zero or more");
+      }
+      this.maxRetries = maxRetries;
+      return this;
+    }
+
+    /**
+     * Replaces the generated {@code Idempotency-Key}. Reuse one key to make a call you repeat
+     * yourself, such as a sync job's replay, run at most once. It never makes a call that isn't
+     * safe to replay, such as a PATCH, retryable.
+     */
+    public Builder idempotencyKey(String idempotencyKey) {
+      Objects.requireNonNull(idempotencyKey, "idempotencyKey");
+      if (idempotencyKey.isBlank()) {
+        throw new IllegalArgumentException("idempotencyKey must not be blank");
+      }
+      this.idempotencyKey = idempotencyKey;
       return this;
     }
 

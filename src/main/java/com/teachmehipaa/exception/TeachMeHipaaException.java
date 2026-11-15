@@ -1,53 +1,47 @@
 package com.teachmehipaa.exception;
 
 import java.net.http.HttpHeaders;
-import java.util.Map;
+import java.util.List;
 
 /**
- * The base of every exception the library raises about an API call. Its fields mirror the API's RFC
- * 9457 problem body.
+ * The base of every exception the library raises about an API call. Catch a subclass to handle one
+ * kind of failure; its fields mirror the API's RFC 9457 problem body.
  */
 public class TeachMeHipaaException extends RuntimeException {
   private static final long serialVersionUID = 1L;
-  private static final HttpHeaders NO_HEADERS = HttpHeaders.of(Map.of(), (name, value) -> true);
 
   private final Integer statusCode;
   private final String code;
   private final String title;
   private final String detail;
+  private final FieldError[] errors;
   private final String requestId;
   private final transient HttpHeaders headers;
   private final String rawBody;
 
   /**
    * @param message what went wrong; the request id is appended when there is one
-   * @param statusCode the HTTP status, or {@code null} when no response arrived
-   * @param code the problem's machine-readable code, or {@code null}
-   * @param title the problem's title, or {@code null}
-   * @param detail the problem's detail, or {@code null}
-   * @param requestId the response's {@code x-request-id}, or {@code null}
-   * @param headers the response headers, or {@code null} when no response arrived
-   * @param rawBody the response body as text, or {@code null} when no response arrived
+   * @param details what the response said
    * @param cause the underlying failure, or {@code null}
    */
-  public TeachMeHipaaException(
-      String message,
-      Integer statusCode,
-      String code,
-      String title,
-      String detail,
-      String requestId,
-      HttpHeaders headers,
-      String rawBody,
-      Throwable cause) {
-    super(requestId == null ? message : message + " (request id: " + requestId + ")", cause);
-    this.statusCode = statusCode;
-    this.code = code;
-    this.title = title;
-    this.detail = detail;
-    this.requestId = requestId;
-    this.headers = headers == null ? NO_HEADERS : headers;
-    this.rawBody = rawBody;
+  public TeachMeHipaaException(String message, ErrorDetails details, Throwable cause) {
+    super(
+        details.requestId() == null
+            ? message
+            : message + " (request id: " + details.requestId() + ")",
+        cause);
+    this.statusCode = details.statusCode();
+    this.code = details.code();
+    this.title = details.title();
+    this.detail = details.detail();
+    this.errors = details.errors().toArray(FieldError[]::new);
+    this.requestId = details.requestId();
+    this.headers = details.headers();
+    this.rawBody = details.rawBody();
+  }
+
+  public TeachMeHipaaException(String message, ErrorDetails details) {
+    this(message, details, null);
   }
 
   /** The HTTP status, or {@code null} when no response arrived. */
@@ -69,6 +63,11 @@ public class TeachMeHipaaException extends RuntimeException {
 
   public String getDetail() {
     return detail;
+  }
+
+  /** The invalid fields of a {@code validation_failed} problem; empty otherwise. */
+  public List<FieldError> getErrors() {
+    return List.of(errors);
   }
 
   /** The request id to quote to TeachMeHIPAA support, or {@code null}. */
