@@ -1,24 +1,18 @@
 package com.teachmehipaa;
 
-import static com.teachmehipaa.Fixtures.APP_ID;
-import static com.teachmehipaa.Fixtures.APP_SECRET;
 import static com.teachmehipaa.Fixtures.CLIENT_ID;
 import static com.teachmehipaa.Fixtures.CLIENT_SECRET;
 import static com.teachmehipaa.Fixtures.LEARNER_ID;
 import static com.teachmehipaa.Fixtures.LEARNER_JSON;
 import static com.teachmehipaa.Fixtures.LEARNER_ROUTE;
 import static com.teachmehipaa.Fixtures.ORG_ID;
-import static com.teachmehipaa.Fixtures.SANDBOX_BASE;
 import static com.teachmehipaa.Fixtures.TOKEN_ROUTE;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.teachmehipaa.core.Page;
-import com.teachmehipaa.core.PartnerGrantTokenProvider;
 import com.teachmehipaa.core.StaticTokenProvider;
-import com.teachmehipaa.core.TokenStore;
 import com.teachmehipaa.exception.AuthenticationException;
 import com.teachmehipaa.model.CertificateVerification;
 import com.teachmehipaa.model.Course;
@@ -33,32 +27,12 @@ class TokenProviderOptionTest {
           {"title": "Unauthorized", "status": 401, "code": "unauthorized"}
           """);
 
-  private static final TokenStore UNUSED_STORE =
-      new TokenStore() {
-        @Override
-        public String load() {
-          throw new AssertionError("no exchange expected");
-        }
-
-        @Override
-        public void save(String refreshToken) {
-          throw new AssertionError("no exchange expected");
-        }
-      };
-
   private static TeachMeHipaaClient.Builder staticClient(FakeTransport api, String accessToken) {
     return TeachMeHipaaClient.builder()
         .tokenProvider(new StaticTokenProvider(accessToken))
         .organizationId(ORG_ID)
         .httpTransport(api)
         .sleeper(new FakeSleeper());
-  }
-
-  private static PartnerGrantTokenProvider.Builder grant() {
-    return PartnerGrantTokenProvider.builder()
-        .clientId(APP_ID)
-        .clientSecret(APP_SECRET)
-        .tokenStore(UNUSED_STORE);
   }
 
   @Test
@@ -107,36 +81,6 @@ class TokenProviderOptionTest {
       assertTrue(
           error.getMessage().contains("either tokenProvider or clientId"), error.getMessage());
     }
-  }
-
-  @Test
-  void aPartnerGrantForAnotherEnvironmentIsRefused() {
-    IllegalStateException error =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                TeachMeHipaaClient.builder()
-                    .tokenProvider(grant().environment(Environment.SANDBOX).build())
-                    .build());
-
-    assertTrue(error.getMessage().contains(SANDBOX_BASE), error.getMessage());
-    assertTrue(error.getMessage().contains("https://api.tme.so/v1"), error.getMessage());
-  }
-
-  @Test
-  void aPartnerGrantForTheSameBaseUrlIsAccepted() {
-    assertDoesNotThrow(
-        () ->
-            TeachMeHipaaClient.builder()
-                .tokenProvider(grant().environment(Environment.SANDBOX).build())
-                .environment(Environment.SANDBOX)
-                .build());
-    assertDoesNotThrow(
-        () ->
-            TeachMeHipaaClient.builder()
-                .tokenProvider(grant().baseUrl("http://localhost:4010/v1/").build())
-                .baseUrl("http://localhost:4010/v1")
-                .build());
   }
 
   @Test

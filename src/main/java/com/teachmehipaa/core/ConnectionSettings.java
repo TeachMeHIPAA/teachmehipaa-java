@@ -2,14 +2,12 @@ package com.teachmehipaa.core;
 
 import com.teachmehipaa.AppInfo;
 import com.teachmehipaa.Environment;
-import java.time.Clock;
 import java.time.Duration;
-import java.util.List;
 import java.util.Objects;
 
 /**
- * Internal: where and how to reach the API, as every public builder that talks to it collects it.
- * Each {@code with…} method validates its value the same way for all of them.
+ * Internal: where and how to reach the API, as the client builder collects it. Each {@code with…}
+ * method validates its value.
  *
  * @param environment which deployment to call
  * @param baseUrl overrides the Environment's base URL, or {@code null}
@@ -85,23 +83,5 @@ public record ConnectionSettings(
   /** The HTTP layer requests go through: the replacement, or a new {@link JdkHttpTransport}. */
   public HttpTransport resolvedTransport() {
     return httpTransport != null ? httpTransport : new JdkHttpTransport();
-  }
-
-  /**
-   * Settings for calling only the token endpoint: no Organization, no logger, and no retries, since
-   * a Grant exchange must never be replayed (ADR-0004).
-   */
-  public ClientConfig tokenEndpointConfig(List<String> scopes, Clock clock) {
-    return new ClientConfig(
-        resolvedBaseUrl(),
-        null,
-        scopes,
-        0,
-        timeout,
-        appInfo,
-        resolvedTransport(),
-        clock,
-        Sleeper.SYSTEM,
-        null);
   }
 }

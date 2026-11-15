@@ -102,31 +102,14 @@ public final class Errors {
    * as an HTML page or a bare 502, maps like any other response.
    */
   static TeachMeHipaaException fromOAuthError(TransportResponse response, Instant now) {
-    return fromOAuthError(response, now, null);
-  }
-
-  /**
-   * As {@link #fromOAuthError(TransportResponse, Instant)}, adding {@code invalidGrantGuidance},
-   * when not {@code null}, to the message of an {@code invalid_grant}: only the caller can fix one.
-   */
-  static TeachMeHipaaException fromOAuthError(
-      TransportResponse response, Instant now, String invalidGrantGuidance) {
     JsonNode oauth = jsonBody(response);
     String code = text(oauth, "error");
     if (code == null) {
       return fromResponse(response, now);
     }
     String detail = text(oauth, "error_description");
-    String message = join(code, detail);
-    if (invalidGrantGuidance != null && "invalid_grant".equals(code)) {
-      message = withGuidance(message, invalidGrantGuidance);
-    }
-    return new OAuthException(message, withBody(response).code(code).detail(detail).build());
-  }
-
-  /** Appends what only the caller can do about a failure to its message. */
-  static String withGuidance(String message, String guidance) {
-    return message.replaceAll("\\.$", "") + ". " + guidance;
+    return new OAuthException(
+        join(code, detail), withBody(response).code(code).detail(detail).build());
   }
 
   /** A success that claimed JSON but could not be read as what the call returns. */
@@ -151,7 +134,7 @@ public final class Errors {
   }
 
   /** Details of {@code response}'s status and headers, without its body. */
-  static ErrorDetails.Builder withoutBody(TransportResponse response) {
+  private static ErrorDetails.Builder withoutBody(TransportResponse response) {
     return ErrorDetails.builder()
         .statusCode(response.statusCode())
         .requestId(response.headers().firstValue("x-request-id").orElse(null))

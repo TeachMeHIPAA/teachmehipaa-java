@@ -8,7 +8,6 @@ import com.teachmehipaa.core.ClientCredentialsTokenProvider;
 import com.teachmehipaa.core.ConnectionSettings;
 import com.teachmehipaa.core.HttpTransport;
 import com.teachmehipaa.core.JdkHttpTransport;
-import com.teachmehipaa.core.PartnerGrantTokenProvider;
 import com.teachmehipaa.core.Sleeper;
 import com.teachmehipaa.core.StaticTokenProvider;
 import com.teachmehipaa.core.TokenProvider;
@@ -51,10 +50,8 @@ import java.util.Objects;
  * Learner learner = client.learners().retrieve("sub_...");
  * }</pre>
  *
- * <p>A Partner app acting for a connected Organization passes a {@link PartnerGrantTokenProvider}
- * instead of the id and secret; a caller with its own auth passes a {@link StaticTokenProvider}. A
- * Partner app's own id and secret mint a Partner-level token for {@code partners()}, which needs no
- * Organization.
+ * <p>A caller that gets Access tokens some other way passes a {@link StaticTokenProvider} instead
+ * of the id and secret.
  */
 public final class TeachMeHipaaClient {
   private static final Webhooks WEBHOOKS = new Webhooks();
@@ -239,7 +236,7 @@ public final class TeachMeHipaaClient {
 
     private Builder() {}
 
-    /** Your API client's id ({@code cli_…}), or a Partner app's ({@code app_…}). */
+    /** Your API client's id ({@code cli_…}). */
     public Builder clientId(String clientId) {
       this.clientId = requireNonBlank(clientId, "clientId");
       return this;
@@ -253,8 +250,8 @@ public final class TeachMeHipaaClient {
 
     /**
      * Supplies every Access token instead of the client minting them, such as a {@link
-     * PartnerGrantTokenProvider} or a {@link StaticTokenProvider}. Give either this or {@code
-     * clientId} and {@code clientSecret}; Scopes belong to the provider.
+     * StaticTokenProvider}. Give either this or {@code clientId} and {@code clientSecret}; Scopes
+     * belong to the provider.
      */
     public Builder tokenProvider(TokenProvider tokenProvider) {
       this.tokenProvider = Objects.requireNonNull(tokenProvider, "tokenProvider");
@@ -350,9 +347,8 @@ public final class TeachMeHipaaClient {
      * Builds the client. Without a client id and secret or a token provider, it can call only
      * public endpoints, such as {@code courses()} and {@code certificateVerifications()}.
      *
-     * @throws IllegalStateException when only one of the client id and secret is given, when a
-     *     token provider is combined with them or with Scopes, or when a {@link
-     *     PartnerGrantTokenProvider} exchanges at a different base URL than the client calls
+     * @throws IllegalStateException when only one of the client id and secret is given, or when a
+     *     token provider is combined with them or with Scopes
      */
     public TeachMeHipaaClient build() {
       if (tokenProvider != null
@@ -364,21 +360,9 @@ public final class TeachMeHipaaClient {
       if ((clientId == null) != (clientSecret == null)) {
         throw new IllegalStateException("clientId and clientSecret go together; pass both");
       }
-      String resolvedBaseUrl = connection.resolvedBaseUrl();
-      // A Grant's Refresh token works only in its own Environment, and a provider that refreshed
-      // against another one would hand the client tokens its API refuses.
-      if (tokenProvider instanceof PartnerGrantTokenProvider grant
-          && !grant.baseUrl().equals(resolvedBaseUrl)) {
-        throw new IllegalStateException(
-            "tokenProvider exchanges Refresh tokens at "
-                + grant.baseUrl()
-                + ", but the client calls "
-                + resolvedBaseUrl
-                + "; give both the same environment and baseUrl");
-      }
       ClientConfig config =
           new ClientConfig(
-              resolvedBaseUrl,
+              connection.resolvedBaseUrl(),
               organizationId,
               scopes,
               maxRetries,

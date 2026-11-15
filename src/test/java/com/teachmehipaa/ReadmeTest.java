@@ -1,24 +1,19 @@
 package com.teachmehipaa;
 
 import static com.teachmehipaa.Fixtures.ACCESS_TOKEN;
-import static com.teachmehipaa.Fixtures.APP_ID;
 import static com.teachmehipaa.Fixtures.INTROSPECTION_ROUTE;
 import static com.teachmehipaa.Fixtures.LEARNER_ID;
 import static com.teachmehipaa.Fixtures.LEARNER_JSON;
 import static com.teachmehipaa.Fixtures.LEARNER_ROUTE;
-import static com.teachmehipaa.Fixtures.REFRESH_TOKEN_1;
-import static com.teachmehipaa.Fixtures.REFRESH_TOKEN_2;
 import static com.teachmehipaa.Fixtures.REQUEST_ID;
 import static com.teachmehipaa.Fixtures.SANDBOX_BASE;
 import static com.teachmehipaa.Fixtures.TOKEN_ROUTE;
-import static com.teachmehipaa.Fixtures.grantTokenJson;
 import static com.teachmehipaa.Fixtures.introspectionJson;
 import static com.teachmehipaa.Fixtures.tokenJson;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -85,7 +80,7 @@ import org.springframework.http.ResponseEntity;
  * or whole classes, such as the webhook controller. One that uses {@code client} without building
  * it gets the Quickstart's client, bound to an Organization so no lookup is scripted. Statement and
  * member samples may name {@code database}, the caller's own storage. To run, the only change is
- * that the library's builders become {@link ReadmeHarness}'s, which wire them to the fake.
+ * that the client builder becomes {@link ReadmeHarness}'s, which wires it to the fake.
  */
 class ReadmeTest {
   private static final ObjectMapper JSON = new ObjectMapper();
@@ -104,11 +99,7 @@ class ReadmeTest {
   private static final Map<Pattern, String> RUN_BUILDERS =
       Map.of(
           Pattern.compile("(?<![\\w.])TeachMeHipaaClient\\.builder\\(\\)"),
-          "com.teachmehipaa.ReadmeHarness.clientBuilder()",
-          Pattern.compile("(?<![\\w.])PartnerGrantTokenProvider\\.builder\\(\\)"),
-          "com.teachmehipaa.ReadmeHarness.grantProviderBuilder()",
-          Pattern.compile("(?<![\\w.])OAuth\\.ExchangeCodeParams\\.builder\\(\\)"),
-          "com.teachmehipaa.ReadmeHarness.exchangeCodeParamsBuilder()");
+          "com.teachmehipaa.ReadmeHarness.clientBuilder()");
 
   private static final String PRELUDE_IMPORTS =
       "import com.teachmehipaa.Environment;\nimport com.teachmehipaa.TeachMeHipaaClient;\n";
@@ -130,16 +121,6 @@ class ReadmeTest {
         protected final Database database = null;
 
         public interface Database {
-          void saveConsent(String state, String codeVerifier);
-
-          String consentState();
-
-          String consentCodeVerifier();
-
-          String loadRefreshToken(String orgId);
-
-          void saveRefreshToken(String orgId, String refreshToken);
-
           String loadEventId();
 
           void saveEventId(String eventId);
@@ -362,9 +343,6 @@ class ReadmeTest {
           Map.entry("webhook-servlet", ReadmeTest::webhookServlet),
           Map.entry("webhook-test-headers", ReadmeTest::webhookTestHeaders),
           Map.entry("webhook-verify-options", ReadmeTest::webhookVerifyOptions),
-          Map.entry("partner-consent", ReadmeTest::partnerConsent),
-          Map.entry("partner-grant", ReadmeTest::partnerGrant),
-          Map.entry("partner-organizations", ReadmeTest::partnerOrganizations),
           Map.entry("events-tail", ReadmeTest::eventsTail),
           Map.entry("configuration", ReadmeTest::configuration),
           Map.entry("logging", ReadmeTest::logging));
@@ -644,61 +622,6 @@ class ReadmeTest {
     run("webhook-verify-options");
 
     assertEquals(List.of("verified true"), printed());
-  }
-
-  private void partnerConsent() throws Exception {
-    api.on(TOKEN_ROUTE, Reply.json(grantTokenJson("access-token-grant", REFRESH_TOKEN_1)));
-    Object sample = construct("partner-consent");
-
-    URI consentUrl = URI.create((String) call(sample, "startConsent"));
-    Map<String, String> consent = form(consentUrl.getRawQuery());
-    assertThrows(
-        SecurityException.class, () -> call(sample, "finishConsent", "code_123", "forged"));
-    call(sample, "finishConsent", "code_123", consent.get("state"));
-
-    assertEquals("console.teachmehipaa.com", consentUrl.getHost());
-    assertEquals("S256", consent.get("code_challenge_method"));
-    assertEquals(APP_ID, consent.get("client_id"));
-    List<TransportRequest> exchanges = api.requestsTo(TOKEN_ROUTE);
-    assertEquals(1, exchanges.size());
-    Map<String, String> exchange = form(new String(exchanges.get(0).body(), UTF_8));
-    assertEquals("code_123", exchange.get("code"));
-    assertEquals(storage.consentCodeVerifier, exchange.get("code_verifier"));
-    assertEquals(Map.of("org_acme", REFRESH_TOKEN_1), storage.refreshTokens);
-  }
-
-  private void partnerGrant() throws Exception {
-    storage.refreshTokens.put("org_acme", REFRESH_TOKEN_1);
-    api.on(TOKEN_ROUTE, Reply.json(grantTokenJson("access-token-grant", REFRESH_TOKEN_2)))
-        .on("GET " + ORG + "/learners", page(LEARNER_JSON));
-
-    run("partner-grant");
-
-    List<TransportRequest> exchanges = api.requestsTo(TOKEN_ROUTE);
-    assertEquals(1, exchanges.size());
-    assertEquals(
-        REFRESH_TOKEN_1, form(new String(exchanges.get(0).body(), UTF_8)).get("refresh_token"));
-    assertEquals(Map.of("org_acme", REFRESH_TOKEN_2), storage.refreshTokens);
-    assertEquals(
-        "Bearer access-token-grant",
-        api.requestsTo("GET " + ORG + "/learners").get(0).headers().get("authorization"));
-    assertEquals(List.of("1"), printed());
-  }
-
-  private void partnerOrganizations() throws Exception {
-    api.on(TOKEN_ROUTE, Reply.json(tokenJson(ACCESS_TOKEN)))
-        .on(
-            "GET /v1/partners/ptn_01JD8E2C3D4E5F6G7H8J9K0M1N/organizations",
-            page(
-                """
-                {"orgId": "org_clinic", "name": "Clinic", "createdAt": "2026-11-01T09:00:00Z",
-                 "grantActive": true}
-                """));
-
-    run("partner-organizations");
-
-    assertEquals(List.of("org_clinic true"), printed());
-    assertEquals(List.of(), api.requestsTo(INTROSPECTION_ROUTE));
   }
 
   private void eventsTail() throws Exception {

@@ -23,8 +23,6 @@ Security fixes are released for the latest major version.
   opt-in `RequestLogger` receives only the method, path, status, latency and
   request id (ADR-0007).
 - `WebhookSignatureException` never carries the Delivery's body or headers,
-  and `TokenStoreException` never carries the Refresh token. The
-  `toString()` of `StaticTokenProvider`, `OAuth.PkcePair` and
-  `OAuth.GrantTokens` leaves the secrets out.
-- It is server-side only: never ship a client secret or a Partner app secret
-  to a browser or a mobile app.
+  and the `toString()` of `StaticTokenProvider` leaves the token out.
+- It is server-side only: never ship a client secret to a browser or a
+  mobile app.

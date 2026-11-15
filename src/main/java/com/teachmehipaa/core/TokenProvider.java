@@ -2,7 +2,7 @@ package com.teachmehipaa.core;
 
 /**
  * Supplies the Access token sent with each request. Client credentials is the default adapter;
- * partner Grants and static tokens plug in here too.
+ * static tokens plug in here too.
  *
  * <p>Implementations must be thread-safe.
  */

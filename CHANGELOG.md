@@ -30,11 +30,10 @@ Generated from the Developer API document release `waggish-wombat`.
   `AuthenticationException`, `PermissionDeniedException`,
   `NotFoundException`, `ConflictException`, `PreconditionFailedException`,
   `IdempotencyException`, `RateLimitException`, `ApiException`,
-  `ApiConnectionException`, `ApiTimeoutException`, `OAuthException`,
-  `TokenStoreException`), all `TeachMeHipaaException`s carrying the problem
-  `getCode()`, `getDetail()`, field `getErrors()`, `getHeaders()` and
-  `getRequestId()`, with a guard that throws `ApiException` for non-JSON
-  responses instead of a parse error.
+  `ApiConnectionException`, `ApiTimeoutException`, `OAuthException`), all
+  `TeachMeHipaaException`s carrying the problem `getCode()`, `getDetail()`,
+  field `getErrors()`, `getHeaders()` and `getRequestId()`, with a guard
+  that throws `ApiException` for non-JSON responses instead of a parse error.
 - Retries with exponential backoff and jitter for network errors, 409
   `conflict`, 429 and 5xx, honoring `Retry-After`, only for calls that are
   safe to replay; a generated `Idempotency-Key` per create and custom method,
@@ -61,10 +60,6 @@ Generated from the Developer API document release `waggish-wombat`.
   delivery, taking the headers as a `Map` or a lookup such as
   `request::getHeader` and an optional `Webhook.VerifyOptions` (tolerance,
   arrival time); and `Webhook.generateTestHeaders` for testing handlers.
-- Partner apps: `OAuth` (PKCE pair, state, consent URL, code exchange) and
-  `PartnerGrantTokenProvider` with a `TokenStore`, which saves every rotated
-  Refresh token before use and never retries a Refresh token exchange. A
-  client refuses a provider bound to another Environment or base URL.
 - `events().tail(...)` to read the Event log from a saved position, once or
   following new Events until the thread is interrupted.
 - Opt-in logging through a `RequestLogger`, one entry per request with

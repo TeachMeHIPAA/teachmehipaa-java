@@ -26,7 +26,6 @@ calls methods.
 - [Operations](#operations)
 - [Uploads and downloads](#uploads-and-downloads)
 - [Webhooks](#webhooks)
-- [Partner apps](#partner-apps)
 - [Tailing the Event log](#tailing-the-event-log)
 - [Configuration](#configuration)
 - [Logging](#logging)
@@ -124,9 +123,7 @@ ComplianceSummary compliance = client.compliance().retrieve();
 System.out.println(compliance.getCompliantRate() + " " + compliance.getLastResponse().requestId());
 ```
 
-To act for another Organization, build another client. Partner-level calls
-(`client.partners()`) are not Organization-scoped and take the `partnerId` as
-their first argument.
+To act for another Organization, build another client.
 
 ## Public lookups without credentials
 
@@ -258,7 +255,6 @@ chosen by HTTP status:
 | `ApiConnectionException`      | No response arrived                                        |
 | `ApiTimeoutException`         | No response within the timeout (an `ApiConnectionException`) |
 | `OAuthException`              | The token endpoint refused to issue a token                |
-| `TokenStoreException`         | Your `TokenStore` failed to load or save a Refresh token   |
 
 They live in `com.teachmehipaa.exception`, with `OperationFailedException`,
 `OperationTimeoutException`, `OperationInterruptedException` and
@@ -294,12 +290,13 @@ The client retries network errors, 409 `conflict`, 429 and 5xx up to
 `maxRetries` times (2 by default), backing off from 0.5 s up to 5 s with
 jitter and honoring `Retry-After` up to 60 s. It only retries calls that are
 safe to replay: reads, writes that carry an `Idempotency-Key`, and the few
-writes that are idempotent by nature, such as `seatOrders().quote`. PATCH and
-DELETE are never retried, and take no key: the API ignores one on them.
+writes that are idempotent by nature, such as `learners().createLaunchLink`.
+PATCH and DELETE are never retried, and take no key: the API ignores one on
+them.
 
 Every create and custom method gets a generated UUID `Idempotency-Key`,
-reused by each of its retries, so a retry never enrolls a Learner twice or
-charges twice. Pass your own to make a call safe to repeat across processes.
+reused by each of its retries, so a retry never enrolls a Learner twice. Pass
+your own to make a call safe to repeat across processes.
 
 ## Per-call options
 
@@ -666,135 +663,6 @@ WebhookDelivery delivery =
 System.out.println("verified " + (delivery instanceof WebhookDelivery.EventDelivery));
 ```
 
-## Partner apps
-
-A Partner app acts for many Organizations, each connected through a Grant
-that an admin approves on the TeachMeHIPAA consent screen. `OAuth` builds the
-consent URL with a PKCE challenge and exchanges the returned code. Keep the
-`state` and code verifier in the admin's server-side session between the two
-steps. In these samples, `database` stands in for your own storage.
-
-<!-- sample: partner-consent -->
-```java
-import com.teachmehipaa.OAuth;
-import java.util.List;
-
-static final String REDIRECT_URI = "https://partner.example.com/tmh/callback";
-
-/** Returns the URL to send the Organization's admin to. */
-String startConsent() {
-  OAuth.PkcePair pkce = OAuth.createPkcePair();
-  String state = OAuth.createState();
-  database.saveConsent(state, pkce.codeVerifier());
-  return OAuth.authorizeUrl(
-      OAuth.AuthorizeUrlParams.builder()
-          .clientId(System.getenv("TMH_APP_ID"))
-          .redirectUri(REDIRECT_URI)
-          .scopes(List.of("learners:read", "learners:write"))
-          .state(state)
-          .codeChallenge(pkce.codeChallenge())
-          .build());
-}
-
-/** Handles the redirect back to REDIRECT_URI. */
-void finishConsent(String code, String state) {
-  if (!state.equals(database.consentState())) {
-    throw new SecurityException("state mismatch: possible CSRF");
-  }
-  OAuth.GrantTokens grant =
-      OAuth.exchangeCode(
-          OAuth.ExchangeCodeParams.builder()
-              .clientId(System.getenv("TMH_APP_ID"))
-              .clientSecret(System.getenv("TMH_APP_SECRET"))
-              .code(code)
-              .redirectUri(REDIRECT_URI)
-              .codeVerifier(database.consentCodeVerifier())
-              .build());
-  database.saveRefreshToken("org_acme", grant.refreshToken());
-}
-```
-
-A code works once, within 10 minutes, so the exchange is never retried. The
-consent URL defaults to Live; for the Sandbox, pass
-`.environment(Environment.SANDBOX)` and `.authorizationUrl(...)`.
-
-Then build a client per connected Organization with a
-`PartnerGrantTokenProvider` and a `TokenStore`, which loads and saves the
-Grant's Refresh token. Every token exchange rotates it, and the provider
-saves each new one to the store before it uses the Access token that came
-with it.
-
-<!-- sample: partner-grant -->
-```java
-import com.teachmehipaa.TeachMeHipaaClient;
-import com.teachmehipaa.core.PartnerGrantTokenProvider;
-import com.teachmehipaa.core.TokenStore;
-
-TokenStore grantStore =
-    new TokenStore() {
-      @Override
-      public String load() {
-        return database.loadRefreshToken("org_acme");
-      }
-
-      @Override
-      public void save(String refreshToken) {
-        database.saveRefreshToken("org_acme", refreshToken);
-      }
-    };
-
-PartnerGrantTokenProvider tokens =
-    PartnerGrantTokenProvider.builder()
-        .clientId(System.getenv("TMH_APP_ID"))
-        .clientSecret(System.getenv("TMH_APP_SECRET"))
-        .tokenStore(grantStore)
-        .build();
-
-TeachMeHipaaClient client =
-    TeachMeHipaaClient.builder().tokenProvider(tokens).organizationId("org_acme").build();
-System.out.println(client.learners().list().items().size());
-```
-
-> [!WARNING]
-> Presenting a superseded Refresh token revokes the whole Grant (ADR-0004).
-> So `save` must persist durably before it returns, you should build one
-> provider per Grant and share it between clients, and a Refresh token
-> exchange is **never retried**: a network error during one throws
-> `ApiConnectionException`, and an `OAuthException` with code `invalid_grant`
-> means the Organization must go through consent again. Never retry these
-> yourself with an old Refresh token. If `save` throws, the client throws
-> `TokenStoreException` and doesn't use the new token.
-
-Give the provider the same `environment` (and `baseUrl`) as the client:
-`build()` refuses, with `IllegalStateException`, a client whose provider
-would exchange Refresh tokens against another Environment.
-
-For the Partner's own calls, such as listing and creating customer
-Organizations, authenticate with the Partner app's own id (`app_…`) and
-secret (`tmh_as_…`) as `clientId` and `clientSecret`, and pass your
-`partnerId`:
-
-<!-- sample: partner-organizations -->
-```java
-import com.teachmehipaa.TeachMeHipaaClient;
-import com.teachmehipaa.model.PartnerOrganization;
-
-TeachMeHipaaClient partner =
-    TeachMeHipaaClient.builder()
-        .clientId(System.getenv("TMH_APP_ID"))
-        .clientSecret(System.getenv("TMH_APP_SECRET"))
-        .build();
-
-for (PartnerOrganization organization :
-    partner.partners().organizations().list("ptn_01JD8E2C3D4E5F6G7H8J9K0M1N").autoPagingIterable()) {
-  System.out.println(organization.getOrgId() + " " + organization.isGrantActive());
-}
-```
-
-If you get Access tokens some other way, pass
-`.tokenProvider(new StaticTokenProvider(accessToken))`. A static token is
-never renewed; once it expires, calls throw `AuthenticationException`.
-
 ## Tailing the Event log
 
 `events().tail(...)` reads the Event log oldest first and keeps its own
@@ -858,10 +726,10 @@ System.out.println(client.getEnvironment() + " " + client.getBaseUrl() + " " + c
 
 | Builder option       | Default                                  | Description                                                                         |
 | -------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------- |
-| `clientId`           | None: public methods only                | Your API client's id (`cli_…`), or a Partner app's (`app_…`)                        |
-| `clientSecret`       | Required with `clientId`                 | The matching secret (`tmh_cs_…` or `tmh_as_…`)                                      |
+| `clientId`           | None: public methods only                | Your API client's id (`cli_…`)                                                      |
+| `clientSecret`       | Required with `clientId`                 | The matching secret (`tmh_cs_…`)                                                    |
 | `scopes`             | Every Scope the API client holds         | Narrows the Access token's Scopes                                                   |
-| `tokenProvider`      | Client credentials                       | Supplies Access tokens instead: `PartnerGrantTokenProvider`, `StaticTokenProvider`  |
+| `tokenProvider`      | Client credentials                       | Supplies Access tokens instead, such as a `StaticTokenProvider`                     |
 | `environment`        | `Environment.LIVE`                       | `LIVE` or `SANDBOX`; credentials work only in their own Environment                 |
 | `baseUrl`            | The Environment's URL                    | Overrides it, for example to point at a mock server                                 |
 | `organizationId`     | Looked up once with `auth().introspect()`| The Organization to act for                                                         |
@@ -878,6 +746,10 @@ only public calls. Base URLs: Live is `https://api.tme.so/v1`; Sandbox is
 `https://api-teachmehipaa-dev.web.app/v1`. Every setting can be read back
 from the client (`getEnvironment()`, `getBaseUrl()`, `getMaxRetries()` and so
 on).
+
+If you get Access tokens some other way, pass
+`.tokenProvider(new StaticTokenProvider(accessToken))`. A static token is
+never renewed; once it expires, calls throw `AuthenticationException`.
 
 ## Logging
 
@@ -924,7 +796,7 @@ whichever thread made the request, so it must be thread-safe.
 
 Java 17 or newer, on any JVM. The library is compiled with `--release 17`
 and tested on Java 17 and 21. It is server-side only: never ship a client
-secret or a Partner app secret to a browser or a mobile app.
+secret to a browser or a mobile app.
 
 ## Versioning
 

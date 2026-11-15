@@ -157,8 +157,6 @@ tasks.test {
   )
   environment("TMH_CLIENT_ID", "cli_01JD8Z4N3QX5V7W9Y2B4C6D8EF")
   environment("TMH_CLIENT_SECRET", "tmh_cs_k3Jq9-Zx_8LmN2pR4tV6wY0aB1cD3eF5gH7iJ9kL0mN")
-  environment("TMH_APP_ID", "app_01JD8Z4N3QX5V7W9Y2B4C6D8EK")
-  environment("TMH_APP_SECRET", "tmh_as_Qw3rTy-Ui_9oPaS2dF4gH6jK8lZ0xC1vB3nM5qW7eR9")
   environment("TMH_WEBHOOK_SECRET", "readme-test-signing-secret")
 }
 

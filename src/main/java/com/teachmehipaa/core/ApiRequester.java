@@ -287,8 +287,8 @@ public final class ApiRequester {
     boolean replayed = false;
     int retryNumber = 1;
     while (true) {
-      // Outside the catch below: the token provider alone decides whether a failed mint is retried,
-      // and a Grant's exchange never is (ADR-0004). Public endpoints never mint one.
+      // Outside the catch below: the token provider alone decides whether a failed mint is
+      // retried. Public endpoints never mint one.
       String accessToken = request.authenticated() ? tokens.accessToken() : null;
       try {
         return exchange.apply(authorized(prepared, accessToken));
