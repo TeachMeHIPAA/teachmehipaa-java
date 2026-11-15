@@ -101,6 +101,25 @@ public record ApiRequest(
     return new Builder(method, pathTemplate);
   }
 
+  /** This request with the query parameter set to {@code value}, in its place if already sent. */
+  ApiRequest withQueryParam(String name, String value) {
+    Map<String, String> query = new LinkedHashMap<>(queryParams);
+    query.put(name, Objects.requireNonNull(value, name));
+    return new ApiRequest(
+        method,
+        pathTemplate,
+        pathParams,
+        query,
+        headers,
+        authenticated,
+        retrySafe,
+        idempotencyKeyRequired,
+        body,
+        encoding,
+        fixedBodyValues,
+        fileParts);
+  }
+
   /** Whether the path needs the client's Organization. */
   public boolean organizationScoped() {
     return pathTemplate.contains("{" + ORGANIZATION_PARAM + "}");

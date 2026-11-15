@@ -5,6 +5,7 @@ import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.core.Page;
+import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.Member;
 import com.teachmehipaa.model.MemberListItem;
 import com.teachmehipaa.param.MemberListParams;
@@ -56,7 +57,8 @@ public final class MemberService {
             .queryParam("role", params.getRole())
             .retrySafe()
             .build();
-    return requester.requestPage(request, MemberListItem.class, options);
+    return requester.requestPage(
+        request, Pagination.cursor("cursor"), MemberListItem.class, options);
   }
 
   /** Retrieve a member. */

@@ -5,6 +5,7 @@ import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.core.Page;
+import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.CancelEnrollmentResponse;
 import com.teachmehipaa.model.Enrollment;
 import com.teachmehipaa.model.EnrollmentActionAccepted;
@@ -262,7 +263,8 @@ public final class EnrollmentService {
             .queryParam("include", params.getInclude())
             .retrySafe()
             .build();
-    return requester.requestPage(request, OrgEnrollmentListItem.class, options);
+    return requester.requestPage(
+        request, Pagination.cursor("cursor"), OrgEnrollmentListItem.class, options);
   }
 
   /** Import learners from CSV. */

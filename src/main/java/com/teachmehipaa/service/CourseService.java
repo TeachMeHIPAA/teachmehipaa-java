@@ -5,6 +5,7 @@ import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.core.Page;
+import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.Course;
 import com.teachmehipaa.param.CourseListParams;
 import java.util.Objects;
@@ -53,7 +54,7 @@ public final class CourseService {
             .unauthenticated()
             .retrySafe()
             .build();
-    return requester.requestPage(request, Course.class, options);
+    return requester.requestPage(request, Pagination.cursor("cursor"), Course.class, options);
   }
 
   /** Retrieve a course. */

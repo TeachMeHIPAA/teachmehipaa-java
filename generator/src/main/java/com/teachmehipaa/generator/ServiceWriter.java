@@ -33,17 +33,31 @@ final class ServiceWriter {
   }
 
   private JavaFile service(Surface.ResourceNode node) {
-    String name = node.serviceClass();
+    boolean extended = Generator.EXTENDED_RESOURCES.contains(String.join(".", node.path()));
+    String exposed = node.serviceClass();
+    String name = extended ? exposed + "Base" : exposed;
     JavaFile file = new JavaFile(Surface.SERVICE_PACKAGE, name);
     String requester = file.use(CORE + "ApiRequester");
     String accessor =
         "client." + node.path().stream().map(part -> part + "()").collect(Collectors.joining("."));
-    file.append(
-        Javadoc.block("", resourceDoc(node) + " Reach it through {@code " + accessor + "}."));
-    file.append("public final class " + name + " {\n");
+    if (extended) {
+      file.append(
+          Javadoc.block(
+              "",
+              "The generated methods of {@code "
+                  + accessor
+                  + "}. The client returns the hand-written {@link "
+                  + exposed
+                  + "}, which adds to them."));
+      file.append("public abstract sealed class " + name + " permits " + exposed + " {\n");
+    } else {
+      file.append(
+          Javadoc.block("", resourceDoc(node) + " Reach it through {@code " + accessor + "}."));
+      file.append("public final class " + name + " {\n");
+    }
     file.append("  private final " + requester + " requester;\n\n");
     file.append("  /** Internal: the client creates services. */\n");
-    file.append("  public " + name + "(" + requester + " requester) {\n");
+    file.append("  " + (extended ? "" : "public ") + name + "(" + requester + " requester) {\n");
     file.append("    this.requester = " + file.use("java.util.Objects"));
     file.append(".requireNonNull(requester, \"requester\");\n  }\n");
     for (Surface.ResourceNode child : node.children().values()) {
@@ -83,10 +97,27 @@ final class ServiceWriter {
               + " it already existed (200)");
     }
     if (response instanceof Ir.PageResponse) {
-      String item = model(plan.method().pagination().itemType(), file);
+      Ir.Pagination pagination = plan.method().pagination();
+      String item = model(pagination.itemType(), file);
+      String style =
+          switch (pagination.style()) {
+            case "cursor" -> "cursor";
+            case "after" -> "after";
+            default ->
+                throw new GeneratorException(
+                    plan.where() + ": no rule for pagination style " + pagination.style());
+          };
       return new Returns(
           file.use(CORE + "Page") + "<" + item + ">",
-          "requestPage(request, " + item + ".class, options)",
+          "requestPage(request, "
+              + file.use(CORE + "Pagination")
+              + "."
+              + style
+              + "("
+              + ModelWriter.literal(pagination.cursorParam())
+              + "), "
+              + item
+              + ".class, options)",
           "one page of {@link " + item + "}; {@code nextCursor()} is {@code null} on the last");
     }
     if (response instanceof Ir.EmptyResponse) {

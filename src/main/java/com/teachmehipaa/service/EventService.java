@@ -1,60 +1,69 @@
-// Generated from openapi/sdk-ir.json by generator/. Do not edit: run ./gradlew generate.
 package com.teachmehipaa.service;
 
 import com.teachmehipaa.RequestOptions;
-import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
-import com.teachmehipaa.core.Page;
-import com.teachmehipaa.model.Event;
+import com.teachmehipaa.core.EventTail;
 import com.teachmehipaa.param.EventListParams;
+import com.teachmehipaa.param.EventTailParams;
 import java.util.Objects;
 
-/** Events in the client's Organization. Reach it through {@code client.events()}. */
-public final class EventService {
+/**
+ * Events in the client's Organization. Reach it through {@code client.events()}. Hand-written: the
+ * generated methods are in {@link EventServiceBase}.
+ */
+public final class EventService extends EventServiceBase {
   private final ApiRequester requester;
 
   /** Internal: the client creates services. */
   public EventService(ApiRequester requester) {
-    this.requester = Objects.requireNonNull(requester, "requester");
+    super(requester);
+    this.requester = requester;
   }
 
-  /** List all events. */
-  public Page<Event> list() {
-    return list(EventListParams.builder().build(), RequestOptions.none());
+  /** Tail the event log from the oldest retained Event. */
+  public EventTail tail() {
+    return tail(EventTailParams.builder().build(), RequestOptions.none());
   }
 
-  /** List all events. */
-  public Page<Event> list(RequestOptions options) {
-    return list(EventListParams.builder().build(), options);
-  }
-
-  /** List all events. */
-  public Page<Event> list(EventListParams params) {
-    return list(params, RequestOptions.none());
+  /** Tail the event log. */
+  public EventTail tail(EventTailParams params) {
+    return tail(params, RequestOptions.none());
   }
 
   /**
-   * List all events.
+   * Tail the event log.
    *
-   * <p>Returns a list of the organization's events from the last 30 days, oldest first. Pass the
-   * last <code>eventId</code> you processed as <code>after</code> to resume where you stopped, and
-   * <code>type</code> to list one event type.
+   * <p>Iterates the Organization's Events oldest first, after {@code after}. The log's {@code
+   * nextCursor} is {@code null} at the current end, so the tail keeps its own position in {@link
+   * EventTail#lastEventId()}. Once caught up the iteration ends, or with {@code follow} waits
+   * {@code interval} and polls again until the loop breaks or the thread is interrupted.
    *
-   * @param params the call's parameters
-   * @param options settings for this call only, such as a timeout or request id
-   * @return one page of {@link Event}; {@code nextCursor()} is {@code null} on the last
-   * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
+   * @param params where to start, which Events and how to follow
+   * @param options settings for every request the tail sends, such as a timeout
+   * @return the tail; nothing is fetched until it is iterated
    */
-  public Page<Event> list(EventListParams params, RequestOptions options) {
+  public EventTail tail(EventTailParams params, RequestOptions options) {
     Objects.requireNonNull(params, "params");
     Objects.requireNonNull(options, "options");
-    ApiRequest request =
-        ApiRequest.builder("GET", "/organizations/{orgId}/events")
-            .queryParam("limit", params.getLimit())
-            .queryParam("after", params.getAfter())
-            .queryParam("type", params.getType())
-            .retrySafe()
-            .build();
-    return requester.requestPage(request, Event.class, options);
+    return new EventTail(
+        position -> list(listParams(params, position), options),
+        params.getAfter(),
+        params.isFollow(),
+        params.getInterval(),
+        requester.sleeper());
+  }
+
+  private static EventListParams listParams(EventTailParams params, String position) {
+    EventListParams.Builder builder = EventListParams.builder();
+    if (params.getLimit() != null) {
+      builder.limit(params.getLimit());
+    }
+    if (position != null) {
+      builder.after(position);
+    }
+    if (params.getType() != null) {
+      builder.type(params.getType());
+    }
+    return builder.build();
   }
 }

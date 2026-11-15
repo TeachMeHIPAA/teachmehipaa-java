@@ -6,6 +6,7 @@ import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.core.EmptyResponse;
 import com.teachmehipaa.core.Page;
+import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.Operation;
 import com.teachmehipaa.model.WebhookSubscription;
 import com.teachmehipaa.model.WebhookSubscriptionCreated;
@@ -121,7 +122,8 @@ public final class WebhookSubscriptionService {
             .queryParam("cursor", params.getCursor())
             .retrySafe()
             .build();
-    return requester.requestPage(request, WebhookSubscription.class, options);
+    return requester.requestPage(
+        request, Pagination.cursor("cursor"), WebhookSubscription.class, options);
   }
 
   /** Retry failed deliveries. */

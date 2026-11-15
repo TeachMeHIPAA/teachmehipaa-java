@@ -71,7 +71,10 @@ public final class Generate {
       }
       try (Stream<Path> listing = Files.list(owned)) {
         for (Path file : listing.toList()) {
-          files.put(root.relativize(file).toString(), Generator.read(file));
+          String path = root.relativize(file).toString();
+          if (!Generator.HAND_WRITTEN_FILES.contains(path)) {
+            files.put(path, Generator.read(file));
+          }
         }
       }
     }

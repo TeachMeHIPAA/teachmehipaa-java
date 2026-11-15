@@ -2,6 +2,7 @@
 package com.teachmehipaa.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import java.time.OffsetDateTime;
 import java.util.Map;
 
 /**
@@ -28,6 +29,12 @@ public sealed interface Event
         UnknownEvent {
   /** The {@code eventType} that selects the variant. */
   String getEventType();
+
+  String getEventId();
+
+  String getOrgId();
+
+  OffsetDateTime getOccurredAt();
 
   /** Fields this version of the library has no getter for, keyed by JSON name. */
   Map<String, Object> getExtraFields();

@@ -8,6 +8,38 @@ import java.util.Map;
 /** Told apart by which field is present; with none of them it reads as {@link Enrollment}. */
 @JsonDeserialize(using = CancelEnrollmentResponseDeserializer.class)
 public sealed interface CancelEnrollmentResponse permits Enrollment, EnrollmentCancelRefunded {
+  String getEnrollmentId();
+
+  String getSubjectId();
+
+  String getCourseId();
+
+  String getOrgId();
+
+  boolean isArchived();
+
+  long getCycle();
+
+  long getRev();
+
+  /** May be {@code null}. */
+  String getInvitedAt();
+
+  /** May be {@code null}. */
+  String getStartedAt();
+
+  /** May be {@code null}. */
+  String getCompletedAt();
+
+  /** May be {@code null}. */
+  String getCertifiedAt();
+
+  /** May be {@code null}. */
+  String getExpiresAt();
+
+  /** May be {@code null}. */
+  String getCertificateId();
+
   /** Fields this version of the library has no getter for, keyed by JSON name. */
   Map<String, Object> getExtraFields();
 

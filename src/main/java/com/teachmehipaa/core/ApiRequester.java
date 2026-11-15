@@ -35,6 +35,11 @@ public final class ApiRequester {
     this.organizationId = config.organizationId();
   }
 
+  /** Waits between polls, as between retries: the client's injected {@link Sleeper}. */
+  public Sleeper sleeper() {
+    return config.sleeper();
+  }
+
   /**
    * Sends the request and reads a successful response into {@code type}.
    *
@@ -68,17 +73,44 @@ public final class ApiRequester {
   }
 
   /**
-   * Sends a list request and reads one page of {@code itemType}.
+   * Sends a list request and reads one page of {@code itemType}. The page fetches the pages after
+   * it by resending {@code request} with the next position in {@code pagination}'s parameter, with
+   * the same options.
    *
    * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
    */
-  public <T> Page<T> requestPage(ApiRequest request, Class<T> itemType, RequestOptions options) {
+  public <T> Page<T> requestPage(
+      ApiRequest request, Pagination pagination, Class<T> itemType, RequestOptions options) {
     TransportResponse response = send(request, options, Expect.JSON);
-    PageBody<T> body =
-        read(
-            response,
-            Json.MAPPER.getTypeFactory().constructParametricType(PageBody.class, itemType));
-    return new Page<>(body.items(), body.nextCursor(), LastResponse.of(response));
+    JsonNode tree = readTree(response);
+    PageBody<T> body;
+    try {
+      body =
+          Json.MAPPER
+              .readerFor(
+                  Json.MAPPER.getTypeFactory().constructParametricType(PageBody.class, itemType))
+              .readValue(tree);
+    } catch (IOException unreadable) {
+      throw Errors.unparseable(response, unreadable);
+    }
+    // A bare JSON null parses without error but is no page.
+    if (body == null) {
+      throw Errors.fromResponse(response, config.clock().instant());
+    }
+    String position =
+        body.nextCursor() == null
+            ? null
+            : pagination.positionAfter(tree.path("items"), body.nextCursor());
+    return new Page<>(
+        body.items(),
+        body.nextCursor(),
+        LastResponse.of(response),
+        () ->
+            requestPage(
+                request.withQueryParam(pagination.cursorParam(), position),
+                pagination,
+                itemType,
+                options));
   }
 
   /**

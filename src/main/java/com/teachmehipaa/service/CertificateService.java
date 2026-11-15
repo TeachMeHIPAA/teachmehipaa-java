@@ -6,6 +6,7 @@ import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.core.BinaryResponse;
 import com.teachmehipaa.core.Page;
+import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.Certificate;
 import com.teachmehipaa.model.CertificateLinks;
 import com.teachmehipaa.model.Operation;
@@ -114,7 +115,7 @@ public final class CertificateService {
             .queryParam("subjectId", params.getSubjectId())
             .retrySafe()
             .build();
-    return requester.requestPage(request, Certificate.class, options);
+    return requester.requestPage(request, Pagination.cursor("cursor"), Certificate.class, options);
   }
 
   /** Retrieve a certificate. */

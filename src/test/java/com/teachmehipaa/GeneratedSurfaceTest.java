@@ -101,6 +101,9 @@ class GeneratedSurfaceTest {
   /** The token endpoint is implemented by the core's token providers. */
   private static final Set<String> HAND_WRITTEN_OPERATIONS = Set.of("createAccessToken");
 
+  /** Methods with no operation of their own, written by hand on top of generated ones. */
+  private static final Set<String> HAND_WRITTEN_METHODS = Set.of("events.tail");
+
   /** IR method names that are Java keywords, and the public name used instead. */
   private static final Map<String, String> KEYWORD_RENAMES =
       Map.of("enrollments.import", "enrollments.importEnrollments");
@@ -131,7 +134,14 @@ class GeneratedSurfaceTest {
   /** Every callable reachable from the client, as {@code resource.method} paths. */
   private static Set<String> publicMethods(Class<?> type, String prefix) {
     Set<String> names = new TreeSet<>();
-    for (Method method : type.getDeclaredMethods()) {
+    // A hand-written service inherits its generated methods from a base class.
+    List<Method> methods = new ArrayList<>();
+    for (Class<?> declaring = type;
+        declaring == type || isService(declaring);
+        declaring = declaring.getSuperclass()) {
+      methods.addAll(List.of(declaring.getDeclaredMethods()));
+    }
+    for (Method method : methods) {
       if (!Modifier.isPublic(method.getModifiers()) || Modifier.isStatic(method.getModifiers())) {
         continue;
       }
@@ -173,7 +183,7 @@ class GeneratedSurfaceTest {
   }
 
   @Test
-  void exposesExactlyOnePublicMethodPerIrMethodWithTheExpectedName() {
+  void exposesExactlyOnePublicMethodPerIrMethodWithTheExpectedNamePlusTheHandWrittenOnes() {
     TeachMeHipaaClient client =
         TeachMeHipaaClient.builder().clientId(CLIENT_ID).clientSecret(CLIENT_SECRET).build();
     Set<String> expected =
@@ -182,6 +192,7 @@ class GeneratedSurfaceTest {
             .collect(Collectors.toCollection(TreeSet::new));
 
     assertEquals(57, expected.size());
+    expected.addAll(HAND_WRITTEN_METHODS);
     assertEquals(expected, publicMethods(client.getClass(), ""));
   }
 
@@ -213,7 +224,10 @@ class GeneratedSurfaceTest {
     for (String directory : Generator.OWNED_DIRECTORIES) {
       try (Stream<Path> files = Files.list(ROOT.resolve(directory))) {
         for (Path file : files.sorted().toList()) {
-          committed.put(ROOT.relativize(file).toString(), Files.readString(file));
+          String path = ROOT.relativize(file).toString();
+          if (!Generator.HAND_WRITTEN_FILES.contains(path)) {
+            committed.put(path, Files.readString(file));
+          }
         }
       }
     }

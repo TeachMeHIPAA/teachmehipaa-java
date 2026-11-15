@@ -5,6 +5,7 @@ import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.core.Page;
+import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.PartnerOrganization;
 import com.teachmehipaa.model.PartnerOrganizationCreated;
 import com.teachmehipaa.param.PartnerOrganizationCreateParams;
@@ -97,6 +98,7 @@ public final class PartnerOrganizationService {
             .queryParam("cursor", params.getCursor())
             .retrySafe()
             .build();
-    return requester.requestPage(request, PartnerOrganization.class, options);
+    return requester.requestPage(
+        request, Pagination.cursor("cursor"), PartnerOrganization.class, options);
   }
 }

@@ -35,6 +35,19 @@ public final class Generator {
           "src/main/java/com/teachmehipaa/param",
           "src/main/java/com/teachmehipaa/service");
 
+  /**
+   * Resources with hand-written methods, by IR path. The generator writes their methods into a
+   * sealed {@code <Service>Base}; the hand-written {@code <Service>} in the same package extends it
+   * and is what the client returns.
+   */
+  static final Set<String> EXTENDED_RESOURCES = Set.of("events");
+
+  /** Hand-written files inside {@link #OWNED_DIRECTORIES}, which a run leaves alone. */
+  public static final Set<String> HAND_WRITTEN_FILES =
+      Set.of(
+          "src/main/java/com/teachmehipaa/service/EventService.java",
+          "src/main/java/com/teachmehipaa/param/EventTailParams.java");
+
   /** Hand-written apart from the section between the markers, which the generator owns. */
   public static final String CLIENT_FILE = "src/main/java/com/teachmehipaa/TeachMeHipaaClient.java";
 
@@ -60,6 +73,9 @@ public final class Generator {
     files.addAll(new ServiceWriter(surface).files());
     Map<String, String> rendered = new TreeMap<>();
     for (JavaFile file : files) {
+      if (HAND_WRITTEN_FILES.contains(file.path())) {
+        throw new GeneratorException(file.path() + " is hand-written; the IR must not replace it");
+      }
       if (rendered.put(file.path(), format(file.path(), file.source())) != null) {
         throw new GeneratorException(file.path() + " is generated twice");
       }

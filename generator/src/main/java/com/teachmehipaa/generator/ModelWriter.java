@@ -277,6 +277,10 @@ final class ModelWriter {
       file.append("  /** The {@code " + property.property() + "} that selects the variant. */\n");
       file.append("  String " + Naming.getter(identifier, false) + "();\n\n");
     }
+    for (Member member : members(name, sharedFields(union, members), file)) {
+      file.append(Javadoc.block("  ", member.description));
+      file.append("  " + member.type + " " + member.getter + "();\n\n");
+    }
     file.append(
         "  /** Fields this version of the library has no getter for, keyed by JSON name. */\n");
     file.append("  " + file.use("java.util.Map") + "<String, Object> getExtraFields();\n");
@@ -285,6 +289,39 @@ final class ModelWriter {
       file.append("  " + file.use(CORE + "LastResponse") + " getLastResponse();\n");
     }
     return file.append("}\n");
+  }
+
+  /**
+   * The fields every member has with the same type and nullability, such as an Event's {@code
+   * eventId}, so callers can read them without telling the variants apart. The discriminator is
+   * declared separately; a generated unknown variant has no other fields, so it shares none.
+   */
+  private List<Ir.Field> sharedFields(Ir.UnionType union, List<String> members) {
+    String discriminator =
+        union.discriminator() instanceof Ir.PropertyDiscriminator property
+            ? property.property()
+            : null;
+    List<List<Ir.Field>> fieldLists =
+        members.stream()
+            .map(
+                member ->
+                    surface.types.get(member) instanceof Ir.ObjectType object
+                        ? object.fields()
+                        : List.<Ir.Field>of())
+            .toList();
+    return fieldLists.get(0).stream()
+        .filter(field -> !field.name().equals(discriminator))
+        .filter(
+            field ->
+                fieldLists.stream()
+                    .allMatch(fields -> fields.stream().anyMatch(other -> sameShape(field, other))))
+        .toList();
+  }
+
+  private static boolean sameShape(Ir.Field field, Ir.Field other) {
+    return field.name().equals(other.name())
+        && field.type().equals(other.type())
+        && (field.required() && !field.nullable()) == (other.required() && !other.nullable());
   }
 
   private JavaFile deserializer(Ir.UnionType union) {

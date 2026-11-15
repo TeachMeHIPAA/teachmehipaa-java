@@ -5,6 +5,7 @@ import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.core.Page;
+import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.AuditEvent;
 import com.teachmehipaa.param.AuditEventListParams;
 import java.util.Objects;
@@ -59,6 +60,6 @@ public final class AuditEventService {
             .queryParam("until", params.getUntil())
             .retrySafe()
             .build();
-    return requester.requestPage(request, AuditEvent.class, options);
+    return requester.requestPage(request, Pagination.cursor("cursor"), AuditEvent.class, options);
   }
 }

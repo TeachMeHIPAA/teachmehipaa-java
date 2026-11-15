@@ -5,6 +5,7 @@ import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.core.Page;
+import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.SeatOrder;
 import com.teachmehipaa.model.SeatOrderCreated;
 import com.teachmehipaa.model.SeatOrderQuote;
@@ -88,7 +89,7 @@ public final class SeatOrderService {
             .queryParam("cursor", params.getCursor())
             .retrySafe()
             .build();
-    return requester.requestPage(request, SeatOrder.class, options);
+    return requester.requestPage(request, Pagination.cursor("cursor"), SeatOrder.class, options);
   }
 
   /** Quote a seat order. */
