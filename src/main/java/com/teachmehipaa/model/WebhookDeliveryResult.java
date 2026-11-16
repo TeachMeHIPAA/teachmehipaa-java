@@ -6,8 +6,7 @@ import java.util.Objects;
 /**
  * How a Test delivery or a redrive ended: the response of the {@link WebhookDeliveryOperation} that
  * {@code client.webhookSubscriptions().test} and {@code .redrive} return. The spec leaves it
- * untyped; the webhook worker settles it with one of these (research {@code api-sdk-surface.md}
- * §8), told apart by {@code _tag}.
+ * untyped; the webhook worker settles it with one of these, told apart by {@code _tag}.
  *
  * <p>Other tags may appear: a result this version of the library doesn't know reads as {@link
  * Unknown}, never as an error, so handle it.

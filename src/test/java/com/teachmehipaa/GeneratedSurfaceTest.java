@@ -33,7 +33,8 @@ class GeneratedSurfaceTest {
   private static final ObjectMapper JSON = new ObjectMapper();
 
   /**
-   * The public method for every Developer API operation: research {@code api-sdk-surface.md} §11,
+   * The public method for every Developer API operation, from the Developer API reference (the
+   * vendored {@code openapi/openapi.developer.json}) written down independently of the generator,
    * with the renames settled since (grilling Q12: {@code retrieveLinks}; the IR: {@code
    * auth.introspect} and {@code delete}), the Q25 splits of {@code importEnrollments} and {@code
    * batchEnrollments}, and {@code import} spelled {@code importEnrollments} because it is a Java

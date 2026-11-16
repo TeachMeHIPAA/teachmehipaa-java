@@ -45,7 +45,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class OperationsTest {
   private static final String ORG = "/v1/organizations/" + ORG_ID;
   private static final String OPERATION_ID = "0b7d4a8e-5c1f-4e2a-9d3b-6f8a1c2e4b7d";
-  // research api-sdk-surface.md §8: organizations/{orgId}/operations/{operationId}.
+  // The Developer API names an Operation organizations/{orgId}/operations/{operationId}.
   private static final String OPERATION_NAME =
       "organizations/" + ORG_ID + "/operations/" + OPERATION_ID;
   private static final String POLL_ROUTE = "GET " + ORG + "/operations/" + OPERATION_ID;

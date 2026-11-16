@@ -43,7 +43,7 @@ class PaginationTest {
     return new FakeTransport().on(TOKEN_ROUTE, Reply.json(tokenJson(ACCESS_TOKEN)));
   }
 
-  /** research {@code api-sdk-surface.md} §4: {@code {items, nextCursor}}. */
+  /** A page as the Developer API returns it: {@code {items, nextCursor}}. */
   private static Reply page(String nextCursor, String... items) {
     return Reply.json(
         "{\"items\": ["
