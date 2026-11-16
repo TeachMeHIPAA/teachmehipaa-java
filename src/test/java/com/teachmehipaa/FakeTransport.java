@@ -19,6 +19,7 @@ import java.util.Map;
 final class FakeTransport implements HttpTransport {
   private final List<TransportRequest> requests = new ArrayList<>();
   private final Map<String, Deque<Responder>> routes = new HashMap<>();
+  private Responder otherwise;
 
   /** Computes a reply, or throws to simulate a request that got no response. */
   @FunctionalInterface
@@ -44,6 +45,12 @@ final class FakeTransport implements HttpTransport {
         });
   }
 
+  /** Answers every request no route is scripted for. */
+  synchronized FakeTransport otherwise(Responder responder) {
+    this.otherwise = responder;
+    return this;
+  }
+
   synchronized FakeTransport replace(String route, Reply reply) {
     routes.remove(route);
     return on(route, reply);
@@ -56,9 +63,13 @@ final class FakeTransport implements HttpTransport {
       requests.add(request);
       Deque<Responder> queue = routes.get(routeOf(request));
       if (queue == null || queue.isEmpty()) {
-        throw new AssertionError("unscripted request " + request.method() + " " + request.uri());
+        if (otherwise == null) {
+          throw new AssertionError("unscripted request " + request.method() + " " + request.uri());
+        }
+        responder = otherwise;
+      } else {
+        responder = queue.size() > 1 ? queue.poll() : queue.peek();
       }
-      responder = queue.size() > 1 ? queue.poll() : queue.peek();
     }
     // Outside the lock, so a slow responder doesn't serialize concurrent callers.
     return responder.respond(request).toResponse();

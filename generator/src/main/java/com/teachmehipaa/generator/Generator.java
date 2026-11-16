@@ -25,8 +25,8 @@ import java.util.stream.Collectors;
 
 /**
  * Turns {@code openapi/sdk-ir.json} into the model, param and service packages, the client's
- * service accessors and the resource reference in {@code docs/reference/}. It reads nothing else,
- * and the same IR always gives byte-identical output.
+ * service accessors, and the resource reference and code samples in {@code docs/reference/}. It
+ * reads nothing else, and the same IR always gives byte-identical output.
  */
 public final class Generator {
   /**
@@ -44,6 +44,9 @@ public final class Generator {
 
   /** The resource reference for partner developers, generated whole. */
   public static final String REFERENCE_FILE = ReferenceWriter.PATH;
+
+  /** One Java snippet per operation, for the monorepo's API reference, generated whole. */
+  public static final String SAMPLES_FILE = CodeSampleWriter.PATH;
 
   static final String BEGIN =
       "  // The beginning of the section generated from openapi/sdk-ir.json.";
@@ -89,6 +92,7 @@ public final class Generator {
     rendered.put(
         CLIENT_FILE, format(CLIENT_FILE, client(surface, read(root.resolve(CLIENT_FILE)))));
     rendered.put(REFERENCE_FILE, new ReferenceWriter(surface).markdown());
+    rendered.put(SAMPLES_FILE, new CodeSampleWriter(surface).json());
     return rendered;
   }
 
