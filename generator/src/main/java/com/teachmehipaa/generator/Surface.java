@@ -100,7 +100,7 @@ final class Surface {
     }
   }
 
-  /** A node of the client's resource tree: {@code partners} holds {@code organizations}. */
+  /** A node of the client's resource tree: a nested IR path hangs under its parent. */
   record ResourceNode(
       List<String> path, List<MethodPlan> methods, Map<String, ResourceNode> children) {
     String serviceClass() {

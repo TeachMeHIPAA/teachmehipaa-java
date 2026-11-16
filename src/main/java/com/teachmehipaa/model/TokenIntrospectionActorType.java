@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * <code>client</code> for an API client or partner app, <code>user</code> for a person.
+ * <code>client</code> for an API client, <code>user</code> for a person.
  *
  * <p>The known values are constants; the API may add values at any time, and {@link #of} accepts
  * them too (ADR-0006).

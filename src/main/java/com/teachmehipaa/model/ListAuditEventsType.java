@@ -41,24 +41,10 @@ public final class ListAuditEventsType {
       new ListAuditEventsType("api_client.revoked");
   public static final ListAuditEventsType LEARNER_UPDATED =
       new ListAuditEventsType("learner.updated");
-  public static final ListAuditEventsType OAUTH_GRANT_CREATED =
-      new ListAuditEventsType("oauth_grant.created");
-  public static final ListAuditEventsType OAUTH_GRANT_REVOKED =
-      new ListAuditEventsType("oauth_grant.revoked");
-  public static final ListAuditEventsType SEAT_ORDER_CREATED =
-      new ListAuditEventsType("seat_order.created");
-  public static final ListAuditEventsType SEAT_ORDER_PAID =
-      new ListAuditEventsType("seat_order.paid");
-  public static final ListAuditEventsType SEAT_ORDER_FAILED =
-      new ListAuditEventsType("seat_order.failed");
   public static final ListAuditEventsType LEARNER_LAUNCH_LINK_CREATED =
       new ListAuditEventsType("learner.launch_link_created");
   public static final ListAuditEventsType API_CLIENT_UPDATED =
       new ListAuditEventsType("api_client.updated");
-  public static final ListAuditEventsType OAUTH_GRANT_UPDATED =
-      new ListAuditEventsType("oauth_grant.updated");
-  public static final ListAuditEventsType ORGANIZATION_CREATED_BY_PARTNER =
-      new ListAuditEventsType("organization.created_by_partner");
 
   private static final Map<String, ListAuditEventsType> KNOWN =
       Stream.of(
@@ -76,15 +62,8 @@ public final class ListAuditEventsType {
               API_CLIENT_SECRET_ROTATED,
               API_CLIENT_REVOKED,
               LEARNER_UPDATED,
-              OAUTH_GRANT_CREATED,
-              OAUTH_GRANT_REVOKED,
-              SEAT_ORDER_CREATED,
-              SEAT_ORDER_PAID,
-              SEAT_ORDER_FAILED,
               LEARNER_LAUNCH_LINK_CREATED,
-              API_CLIENT_UPDATED,
-              OAUTH_GRANT_UPDATED,
-              ORGANIZATION_CREATED_BY_PARTNER)
+              API_CLIENT_UPDATED)
           .collect(Collectors.toUnmodifiableMap(ListAuditEventsType::value, Function.identity()));
 
   private final String value;

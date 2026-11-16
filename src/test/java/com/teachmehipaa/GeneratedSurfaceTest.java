@@ -78,18 +78,6 @@ class GeneratedSurfaceTest {
           Map.entry("listMembers", List.of("members.list")),
           Map.entry("getMember", List.of("members.retrieve")),
           Map.entry("getOperation", List.of("operations.retrieve")),
-          Map.entry("createPartnerOrganization", List.of("partners.organizations.create")),
-          Map.entry("listPartnerOrganizations", List.of("partners.organizations.list")),
-          Map.entry("getPartner", List.of("partners.retrieve")),
-          Map.entry("confirmPaymentMethod", List.of("paymentMethod.confirm")),
-          Map.entry("removePaymentMethod", List.of("paymentMethod.delete")),
-          Map.entry("preparePaymentMethod", List.of("paymentMethod.prepare")),
-          Map.entry("getPaymentMethod", List.of("paymentMethod.retrieve")),
-          Map.entry("setupPaymentMethod", List.of("paymentMethod.setup")),
-          Map.entry("createSeatOrder", List.of("seatOrders.create")),
-          Map.entry("listSeatOrders", List.of("seatOrders.list")),
-          Map.entry("quoteSeatOrder", List.of("seatOrders.quote")),
-          Map.entry("getSeatOrder", List.of("seatOrders.retrieve")),
           Map.entry("getSeatInventory", List.of("seats.retrieve")),
           Map.entry("createWebhookSubscription", List.of("webhookSubscriptions.create")),
           Map.entry("deleteWebhookSubscription", List.of("webhookSubscriptions.delete")),
@@ -112,7 +100,6 @@ class GeneratedSurfaceTest {
           "certificates.downloadPdfStream", "certificates.downloadPdf",
           "courses.retrieveIfModified", "courses.retrieve",
           "enrollments.retrieveIfModified", "enrollments.retrieve",
-          "seatOrders.retrieveIfModified", "seatOrders.retrieve",
           "webhookSubscriptions.retrieveIfModified", "webhookSubscriptions.retrieve");
 
   /** IR method names that are Java keywords, and the public name used instead. */
@@ -189,7 +176,7 @@ class GeneratedSurfaceTest {
             .filter(operationId -> !HAND_WRITTEN_OPERATIONS.contains(operationId))
             .toList();
 
-    assertEquals(55, covered.size());
+    assertEquals(43, covered.size());
     assertEquals(new TreeSet<>(EXPECTED_METHODS.keySet()), new TreeSet<>(covered));
   }
 
@@ -202,7 +189,7 @@ class GeneratedSurfaceTest {
             .flatMap(List::stream)
             .collect(Collectors.toCollection(TreeSet::new));
 
-    assertEquals(57, expected.size());
+    assertEquals(45, expected.size());
     assertTrue(expected.containsAll(GENERATED_SIBLINGS.values()));
     expected.addAll(GENERATED_SIBLINGS.keySet());
     expected.addAll(HandWritten.methods());
@@ -226,7 +213,7 @@ class GeneratedSurfaceTest {
       }
     }
 
-    assertEquals(57, named.size());
+    assertEquals(45, named.size());
   }
 
   @Test

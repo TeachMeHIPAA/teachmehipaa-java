@@ -54,29 +54,9 @@ public final class ProblemCode {
       new ProblemCode("api_client_limit_reached");
   public static final ProblemCode EXTERNAL_ID_CONFLICT = new ProblemCode("external_id_conflict");
   public static final ProblemCode CANNOT_OFFBOARD_ADMIN = new ProblemCode("cannot_offboard_admin");
-  public static final ProblemCode SPEND_LIMIT_EXCEEDED = new ProblemCode("spend_limit_exceeded");
-  public static final ProblemCode PAYMENT_METHOD_NOT_AVAILABLE =
-      new ProblemCode("payment_method_not_available");
-  public static final ProblemCode RETURN_URL_NOT_ALLOWED =
-      new ProblemCode("return_url_not_allowed");
-  public static final ProblemCode CURRENCY_NOT_AVAILABLE =
-      new ProblemCode("currency_not_available");
-  public static final ProblemCode PAYMENT_METHOD_REQUIRED =
-      new ProblemCode("payment_method_required");
-  public static final ProblemCode PAYMENT_METHOD_CHANGED =
-      new ProblemCode("payment_method_changed");
-  public static final ProblemCode PRICE_CHANGED = new ProblemCode("price_changed");
-  public static final ProblemCode SUPERSEDED = new ProblemCode("superseded");
-  public static final ProblemCode SETUP_NOT_SUCCEEDED = new ProblemCode("setup_not_succeeded");
-  public static final ProblemCode INVOICE_BILLING_NOT_ENABLED =
-      new ProblemCode("invoice_billing_not_enabled");
   public static final ProblemCode CANNOT_LAUNCH_ADMIN = new ProblemCode("cannot_launch_admin");
   public static final ProblemCode LEARNER_REMOVED = new ProblemCode("learner_removed");
   public static final ProblemCode LEARNER_NOT_ACCEPTED = new ProblemCode("learner_not_accepted");
-  public static final ProblemCode PARTNER_ORG_LIMIT_REACHED =
-      new ProblemCode("partner_org_limit_reached");
-  public static final ProblemCode BILLING_CONTACT_REQUIRED =
-      new ProblemCode("billing_contact_required");
   public static final ProblemCode CANNOT_RENAME_ADMIN = new ProblemCode("cannot_rename_admin");
   public static final ProblemCode LEARNER_IN_MULTIPLE_ORGS =
       new ProblemCode("learner_in_multiple_orgs");
@@ -122,21 +102,9 @@ public final class ProblemCode {
               API_CLIENT_LIMIT_REACHED,
               EXTERNAL_ID_CONFLICT,
               CANNOT_OFFBOARD_ADMIN,
-              SPEND_LIMIT_EXCEEDED,
-              PAYMENT_METHOD_NOT_AVAILABLE,
-              RETURN_URL_NOT_ALLOWED,
-              CURRENCY_NOT_AVAILABLE,
-              PAYMENT_METHOD_REQUIRED,
-              PAYMENT_METHOD_CHANGED,
-              PRICE_CHANGED,
-              SUPERSEDED,
-              SETUP_NOT_SUCCEEDED,
-              INVOICE_BILLING_NOT_ENABLED,
               CANNOT_LAUNCH_ADMIN,
               LEARNER_REMOVED,
               LEARNER_NOT_ACCEPTED,
-              PARTNER_ORG_LIMIT_REACHED,
-              BILLING_CONTACT_REQUIRED,
               CANNOT_RENAME_ADMIN,
               LEARNER_IN_MULTIPLE_ORGS,
               ACCOUNT_EXISTS_USE_SIGN_IN,

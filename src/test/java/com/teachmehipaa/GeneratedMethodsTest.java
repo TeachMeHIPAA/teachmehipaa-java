@@ -2,7 +2,6 @@ package com.teachmehipaa;
 
 import static com.teachmehipaa.Fixtures.ACCESS_TOKEN;
 import static com.teachmehipaa.Fixtures.ETAG;
-import static com.teachmehipaa.Fixtures.INTROSPECTION_ROUTE;
 import static com.teachmehipaa.Fixtures.LEARNER_ID;
 import static com.teachmehipaa.Fixtures.LEARNER_JSON;
 import static com.teachmehipaa.Fixtures.LEARNER_ROUTE;
@@ -38,7 +37,6 @@ import com.teachmehipaa.model.LearnerCreatedDelivery;
 import com.teachmehipaa.model.LearnerStatus;
 import com.teachmehipaa.model.LearnerUpsertRequestDelivery;
 import com.teachmehipaa.model.LearnerWriteResult;
-import com.teachmehipaa.model.PartnerOrganization;
 import com.teachmehipaa.model.UnknownAuditEvent;
 import com.teachmehipaa.model.UnknownAuditEventActor;
 import com.teachmehipaa.model.WebhookSubscription;
@@ -47,7 +45,6 @@ import com.teachmehipaa.param.EnrollmentCancelParams;
 import com.teachmehipaa.param.EnrollmentPreviewImportParams;
 import com.teachmehipaa.param.ImportOptions;
 import com.teachmehipaa.param.LearnerUpsertByExternalIdParams;
-import com.teachmehipaa.param.PartnerOrganizationListParams;
 import com.teachmehipaa.param.WebhookSubscriptionUpdateParams;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -114,40 +111,6 @@ class GeneratedMethodsTest {
   }
 
   @Test
-  void aPartnerMethodTakesThePartnerIdAndNeverLooksUpTheOrganization() {
-    String route = "GET /v1/partners/ptr_01JD8Z4N3QX5V7W9Y2B4C6D8EM/organizations";
-    FakeTransport api =
-        api()
-            .on(
-                route,
-                Reply.json(
-                    """
-                    {"items": [{"orgId": "org_child", "name": "Child Clinic",
-                                "createdAt": "2026-10-01T12:00:00Z", "grantActive": true}],
-                     "nextCursor": "c_2"}
-                    """));
-    TeachMeHipaaClient client = clientFor(api).build();
-
-    Page<PartnerOrganization> page =
-        client
-            .partners()
-            .organizations()
-            .list(
-                "ptr_01JD8Z4N3QX5V7W9Y2B4C6D8EM",
-                PartnerOrganizationListParams.builder().limit(10).cursor("c_1").build());
-
-    assertEquals("org_child", page.items().get(0).getOrgId());
-    assertTrue(page.items().get(0).isGrantActive());
-    assertEquals(
-        OffsetDateTime.of(2026, 10, 1, 12, 0, 0, 0, ZoneOffset.UTC),
-        page.items().get(0).getCreatedAt());
-    assertEquals("c_2", page.nextCursor());
-    assertEquals(200, page.getLastResponse().statusCode());
-    assertEquals("limit=10&cursor=c_1", only(api, route).uri().getRawQuery());
-    assertTrue(api.requestsTo(INTROSPECTION_ROUTE).isEmpty());
-  }
-
-  @Test
   void anUpdateSendsAMergePatchWithIfMatchAndNullForAClearedField() throws IOException {
     String route = "PATCH " + ORG + "/webhook-subscriptions/" + SUBSCRIPTION_ID;
     FakeTransport api =
@@ -183,10 +146,10 @@ class GeneratedMethodsTest {
 
   @Test
   void aDeleteAnsweredWith204ReturnsItsResponseMetadata() {
-    String route = "DELETE " + ORG + "/billing/payment-method";
+    String route = "DELETE " + ORG + "/webhook-subscriptions/" + SUBSCRIPTION_ID;
     FakeTransport api = api().on(route, Reply.empty(204).withHeader("x-request-id", "req_9"));
 
-    EmptyResponse response = clientOn(api).paymentMethod().delete();
+    EmptyResponse response = clientOn(api).webhookSubscriptions().delete(SUBSCRIPTION_ID);
 
     assertEquals(204, response.getLastResponse().statusCode());
     assertEquals("req_9", response.getLastResponse().requestId());

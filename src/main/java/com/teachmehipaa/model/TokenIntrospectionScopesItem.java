@@ -42,14 +42,8 @@ public final class TokenIntrospectionScopesItem {
       new TokenIntrospectionScopesItem("learners:write");
   public static final TokenIntrospectionScopesItem COMPLIANCE_READ =
       new TokenIntrospectionScopesItem("compliance:read");
-  public static final TokenIntrospectionScopesItem SEATS_PURCHASE =
-      new TokenIntrospectionScopesItem("seats:purchase");
   public static final TokenIntrospectionScopesItem WEBHOOKS_MANAGE =
       new TokenIntrospectionScopesItem("webhooks:manage");
-  public static final TokenIntrospectionScopesItem PARTNER_ORGS_READ =
-      new TokenIntrospectionScopesItem("partner:orgs:read");
-  public static final TokenIntrospectionScopesItem PARTNER_ORGS_WRITE =
-      new TokenIntrospectionScopesItem("partner:orgs:write");
 
   private static final Map<String, TokenIntrospectionScopesItem> KNOWN =
       Stream.of(
@@ -68,10 +62,7 @@ public final class TokenIntrospectionScopesItem {
               LEARNERS_READ,
               LEARNERS_WRITE,
               COMPLIANCE_READ,
-              SEATS_PURCHASE,
-              WEBHOOKS_MANAGE,
-              PARTNER_ORGS_READ,
-              PARTNER_ORGS_WRITE)
+              WEBHOOKS_MANAGE)
           .collect(
               Collectors.toUnmodifiableMap(
                   TokenIntrospectionScopesItem::value, Function.identity()));

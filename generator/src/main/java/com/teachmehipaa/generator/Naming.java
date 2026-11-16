@@ -119,12 +119,12 @@ final class Naming {
     return constant;
   }
 
-  /** The design record's singular: drop a trailing "s" ({@code seatOrders}, {@code seats}). */
+  /** The design record's singular: drop a trailing "s" ({@code learners}, {@code seats}). */
   static String singular(String word) {
     return word.endsWith("s") ? word.substring(0, word.length() - 1) : word;
   }
 
-  /** {@code [partners, organizations]} becomes {@code PartnerOrganization}. */
+  /** {@code [webhookSubscriptions]} becomes {@code WebhookSubscription}; nested parts join. */
   static String singularPascal(List<String> resourcePath) {
     return resourcePath.stream().map(part -> pascal(singular(part))).collect(Collectors.joining());
   }

@@ -22,9 +22,6 @@ import com.teachmehipaa.service.EventService;
 import com.teachmehipaa.service.LearnerService;
 import com.teachmehipaa.service.MemberService;
 import com.teachmehipaa.service.OperationService;
-import com.teachmehipaa.service.PartnerService;
-import com.teachmehipaa.service.PaymentMethodService;
-import com.teachmehipaa.service.SeatOrderService;
 import com.teachmehipaa.service.SeatService;
 import com.teachmehipaa.service.WebhookSubscriptionService;
 import java.time.Clock;
@@ -151,21 +148,6 @@ public final class TeachMeHipaaClient {
   /** Operations in the client's Organization. */
   public OperationService operations() {
     return new OperationService(requester);
-  }
-
-  /** Partners. */
-  public PartnerService partners() {
-    return new PartnerService(requester);
-  }
-
-  /** Payment method in the client's Organization. */
-  public PaymentMethodService paymentMethod() {
-    return new PaymentMethodService(requester);
-  }
-
-  /** Seat orders in the client's Organization. */
-  public SeatOrderService seatOrders() {
-    return new SeatOrderService(requester);
   }
 
   /** Seats in the client's Organization. */

@@ -34,12 +34,12 @@ public final class TokenIntrospection extends ApiResource {
     this.expiresAt = expiresAt;
   }
 
-  /** <code>client</code> for an API client or partner app, <code>user</code> for a person. */
+  /** <code>client</code> for an API client, <code>user</code> for a person. */
   public TokenIntrospectionActorType getActorType() {
     return actorType;
   }
 
-  /** The API client or partner app the token belongs to. May be {@code null}. */
+  /** The API client the token belongs to. May be {@code null}. */
   public String getClientId() {
     return clientId;
   }

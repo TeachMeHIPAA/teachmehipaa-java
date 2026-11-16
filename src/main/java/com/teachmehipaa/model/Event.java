@@ -22,9 +22,6 @@ public sealed interface Event
         EventLearnerStarted,
         EventSeatConsumed,
         EventSeatFreed,
-        EventSeatOrderExpired,
-        EventSeatOrderFailed,
-        EventSeatOrderPaid,
         EventSeatsLow,
         UnknownEvent {
   /** The {@code eventType} that selects the variant. */

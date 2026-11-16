@@ -24,8 +24,6 @@ import com.teachmehipaa.model.LearnerCreateRequestDelivery;
 import com.teachmehipaa.model.LearnerStatus;
 import com.teachmehipaa.model.LearnerWriteResult;
 import com.teachmehipaa.model.Operation;
-import com.teachmehipaa.model.PartnerOrganization;
-import com.teachmehipaa.model.SeatOrderQuote;
 import com.teachmehipaa.model.TokenIntrospection;
 import com.teachmehipaa.model.WebhookSubscriptionCreated;
 import com.teachmehipaa.param.CourseListParams;
@@ -35,8 +33,6 @@ import com.teachmehipaa.param.LearnerCreateParams;
 import com.teachmehipaa.param.LearnerListParams;
 import com.teachmehipaa.param.LearnerRetrieveParams;
 import com.teachmehipaa.param.LearnerUpdateParams;
-import com.teachmehipaa.param.PartnerOrganizationListParams;
-import com.teachmehipaa.param.SeatOrderQuoteParams;
 import com.teachmehipaa.param.WebhookSubscriptionCreateParams;
 import java.io.IOException;
 import java.util.List;
@@ -60,7 +56,6 @@ class ContractTest {
   private static final String COURSE_ID = "hipaa-2026";
   private static final String SUBSCRIPTION_ID = "whs_01JD8D";
   private static final String OPERATION_ID = "op-01JD8H";
-  private static final String PARTNER_ID = "ptn_01JD8E2C3D4E5F6G7H8J9K0M1N";
   private static final String TINY_ID = "cAbCdEfGhIjKl";
   private static final String TOKEN = "contract-test-token";
 
@@ -90,11 +85,19 @@ class ContractTest {
   void theHarnessCatchesARequestThatBreaksTheSpec() {
     assertThrows(
         InvalidRequestException.class,
-        () -> client.seatOrders().quote(SeatOrderQuoteParams.builder().quantity(0).build()));
+        () ->
+            client
+                .webhookSubscriptions()
+                .create(
+                    WebhookSubscriptionCreateParams.builder()
+                        .endpointUrl("https://hr.example.com/hooks/tmh")
+                        .eventTypes(List.of(EventType.SEATS_LOW))
+                        .seatsLowThreshold(-1)
+                        .build()));
 
     List<String> found = violations.found();
     assertEquals(1, found.size(), found.toString());
-    assertTrue(found.get(0).contains("quantity"), found.get(0));
+    assertTrue(found.get(0).contains("seatsLowThreshold"), found.get(0));
     violations.clear();
   }
 
@@ -219,16 +222,6 @@ class ContractTest {
   }
 
   @Test
-  void quotesASeatOrder() {
-    SeatOrderQuote quote =
-        client
-            .seatOrders()
-            .quote(SeatOrderQuoteParams.builder().quantity(10).currency("usd").build());
-
-    assertTrue(quote.getQuantity() > 0);
-  }
-
-  @Test
   void createsAWebhookSubscriptionWithItsSigningSecret() {
     WebhookSubscriptionCreated subscription =
         client
@@ -273,18 +266,5 @@ class ContractTest {
     TokenIntrospection introspection = client.auth().introspect();
 
     assertNotNull(introspection.getActorType());
-  }
-
-  @Test
-  void listsAPartnersCustomerOrganizations() {
-    Page<PartnerOrganization> page =
-        client
-            .partners()
-            .organizations()
-            .list(PARTNER_ID, PartnerOrganizationListParams.builder().limit(10).build());
-
-    for (PartnerOrganization organization : page.items()) {
-      assertNotNull(organization.getOrgId());
-    }
   }
 }

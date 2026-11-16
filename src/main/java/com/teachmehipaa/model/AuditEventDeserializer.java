@@ -24,18 +24,10 @@ final class AuditEventDeserializer extends UnionDeserializer<AuditEvent> {
             Map.entry("member.removed", AuditEventMemberRemoved.class),
             Map.entry("member.role_changed", AuditEventMemberRoleChanged.class),
             Map.entry("member.transferred", AuditEventMemberTransferred.class),
-            Map.entry("oauth_grant.created", AuditEventOauthGrantCreated.class),
-            Map.entry("oauth_grant.revoked", AuditEventOauthGrantRevoked.class),
-            Map.entry("oauth_grant.updated", AuditEventOauthGrantUpdated.class),
             Map.entry("organization.closed", AuditEventOrganizationClosed.class),
-            Map.entry(
-                "organization.created_by_partner", AuditEventOrganizationCreatedByPartner.class),
             Map.entry("organization.reopened", AuditEventOrganizationReopened.class),
             Map.entry("organization.updated", AuditEventOrganizationUpdated.class),
-            Map.entry("seat.granted", AuditEventSeatGranted.class),
-            Map.entry("seat_order.created", AuditEventSeatOrderCreated.class),
-            Map.entry("seat_order.failed", AuditEventSeatOrderFailed.class),
-            Map.entry("seat_order.paid", AuditEventSeatOrderPaid.class)),
+            Map.entry("seat.granted", AuditEventSeatGranted.class)),
         UnknownAuditEvent.class);
   }
 }

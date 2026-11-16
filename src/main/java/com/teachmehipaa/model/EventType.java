@@ -26,9 +26,6 @@ public final class EventType {
   public static final EventType INVITE_BOUNCED = new EventType("invite.bounced");
   public static final EventType CERTIFICATE_REVOKED = new EventType("certificate.revoked");
   public static final EventType SEATS_LOW = new EventType("seats.low");
-  public static final EventType SEAT_ORDER_PAID = new EventType("seat_order.paid");
-  public static final EventType SEAT_ORDER_FAILED = new EventType("seat_order.failed");
-  public static final EventType SEAT_ORDER_EXPIRED = new EventType("seat_order.expired");
 
   private static final Map<String, EventType> KNOWN =
       Stream.of(
@@ -43,10 +40,7 @@ public final class EventType {
               LEARNER_REMOVED,
               INVITE_BOUNCED,
               CERTIFICATE_REVOKED,
-              SEATS_LOW,
-              SEAT_ORDER_PAID,
-              SEAT_ORDER_FAILED,
-              SEAT_ORDER_EXPIRED)
+              SEATS_LOW)
           .collect(Collectors.toUnmodifiableMap(EventType::value, Function.identity()));
 
   private final String value;

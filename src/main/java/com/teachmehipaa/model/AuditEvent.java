@@ -22,17 +22,10 @@ public sealed interface AuditEvent
         AuditEventMemberRemoved,
         AuditEventMemberRoleChanged,
         AuditEventMemberTransferred,
-        AuditEventOauthGrantCreated,
-        AuditEventOauthGrantRevoked,
-        AuditEventOauthGrantUpdated,
         AuditEventOrganizationClosed,
-        AuditEventOrganizationCreatedByPartner,
         AuditEventOrganizationReopened,
         AuditEventOrganizationUpdated,
         AuditEventSeatGranted,
-        AuditEventSeatOrderCreated,
-        AuditEventSeatOrderFailed,
-        AuditEventSeatOrderPaid,
         UnknownAuditEvent {
   /** The {@code type} that selects the variant. */
   String getType();

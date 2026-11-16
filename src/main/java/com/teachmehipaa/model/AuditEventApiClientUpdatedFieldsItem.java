@@ -16,15 +16,9 @@ import java.util.stream.Stream;
 public final class AuditEventApiClientUpdatedFieldsItem {
   public static final AuditEventApiClientUpdatedFieldsItem NAME =
       new AuditEventApiClientUpdatedFieldsItem("name");
-  public static final AuditEventApiClientUpdatedFieldsItem MAX_SEATS_PER_ORDER =
-      new AuditEventApiClientUpdatedFieldsItem("maxSeatsPerOrder");
-  public static final AuditEventApiClientUpdatedFieldsItem MAX_SPEND_PER30_DAYS =
-      new AuditEventApiClientUpdatedFieldsItem("maxSpendPer30Days");
-  public static final AuditEventApiClientUpdatedFieldsItem RETURN_URL_ALLOWLIST =
-      new AuditEventApiClientUpdatedFieldsItem("returnUrlAllowlist");
 
   private static final Map<String, AuditEventApiClientUpdatedFieldsItem> KNOWN =
-      Stream.of(NAME, MAX_SEATS_PER_ORDER, MAX_SPEND_PER30_DAYS, RETURN_URL_ALLOWLIST)
+      Stream.of(NAME)
           .collect(
               Collectors.toUnmodifiableMap(
                   AuditEventApiClientUpdatedFieldsItem::value, Function.identity()));

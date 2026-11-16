@@ -23,9 +23,6 @@ final class EventDeserializer extends UnionDeserializer<Event> {
             Map.entry("learner.started", EventLearnerStarted.class),
             Map.entry("seat.consumed", EventSeatConsumed.class),
             Map.entry("seat.freed", EventSeatFreed.class),
-            Map.entry("seat_order.expired", EventSeatOrderExpired.class),
-            Map.entry("seat_order.failed", EventSeatOrderFailed.class),
-            Map.entry("seat_order.paid", EventSeatOrderPaid.class),
             Map.entry("seats.low", EventSeatsLow.class)),
         UnknownEvent.class);
   }
