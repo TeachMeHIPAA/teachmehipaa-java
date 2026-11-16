@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>TeachMeHIPAA Java Library</title>
+</head>
+<body>
+<p>The official Java library for the TeachMeHIPAA Developer API: enroll your people in HIPAA
+training and track their compliance from your own systems.</p>
+
+<p><strong>Status: pre-release.</strong> The Developer API isn't generally available yet, and the
+library isn't on Maven Central. Until it is, build it from source, as
+<a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/getting-started.md">Getting
+started</a> shows.</p>
+
+<p>Start with {@link com.teachmehipaa.TeachMeHipaaClient}: build one client with
+{@link com.teachmehipaa.TeachMeHipaaClient#builder()}, share it, and reach the API's resources
+through its services, such as {@code client.learners()}. Webhook Deliveries are verified with
+{@link com.teachmehipaa.Webhook}, which needs no client.</p>
+
+<pre>{@code
+TeachMeHipaaClient client =
+    TeachMeHipaaClient.builder()
+        .clientId(System.getenv("TMH_CLIENT_ID"))
+        .clientSecret(System.getenv("TMH_CLIENT_SECRET"))
+        .environment(Environment.SANDBOX)
+        .build();
+
+Learner learner = client.learners().retrieve("sub_01JD8Z4N3QX5V7W9Y2B4C6D8EG");
+}</pre>
+
+<p><strong>Packages</strong></p>
+<ul>
+<li>{@code com.teachmehipaa}: the client, its options, and webhook verification.</li>
+<li>{@code com.teachmehipaa.service}: one service per resource, reached from the client.</li>
+<li>{@code com.teachmehipaa.param}: the parameters each method takes, built with
+{@code builder()}.</li>
+<li>{@code com.teachmehipaa.model}: what the API returns, Events included.</li>
+<li>{@code com.teachmehipaa.exception}: the unchecked exceptions a call can throw.</li>
+<li>{@code com.teachmehipaa.core}: pagination, Operations' results, downloads, and the seams for
+your own HTTP transport and token provider.</li>
+</ul>
+
+<p><strong>Guides.</strong> They explain how the pieces fit together, with samples that are compiled and run in CI:</p>
+<ul>
+<li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/getting-started.md">Getting started</a></li>
+<li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/authentication.md">Authentication</a></li>
+<li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/errors-and-retries.md">Errors and retries</a></li>
+<li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/pagination-and-events.md">Pagination and the Event log</a></li>
+<li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/webhooks.md">Webhooks</a></li>
+<li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/operations-and-files.md">Operations and files</a></li>
+<li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/conditional-requests.md">Conditional requests</a></li>
+<li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/testing.md">Testing</a></li>
+<li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/configuration.md">Configuration</a></li>
+<li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/versioning.md">Versioning</a></li>
+</ul>
+<p>The <a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/reference/resources.md">resource
+reference</a> lists every method with its HTTP route and required Scopes.</p>
+</body>
+</html>
