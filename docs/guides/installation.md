@@ -6,7 +6,7 @@
 | --- | --- |
 | JDK | 17 or later. The jar targets Java 17 bytecode (`--release 17`). CI builds and tests on Temurin 17 and 21. |
 | Build tool | Any tool that resolves Maven artifacts |
-| Network | Outbound HTTPS to `api.tme.so` (Live) or `api-teachmehipaa-dev.web.app` (Sandbox) |
+| Network | Outbound HTTPS to `api.tme.so` (Live) or `sandbox.api.tme.so` (Sandbox) |
 
 The library runs server-side. A client secret authenticates as your whole
 Organization, so it never belongs in a browser, an Android app or any other

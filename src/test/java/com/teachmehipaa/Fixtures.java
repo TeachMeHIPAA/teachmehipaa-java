@@ -3,7 +3,7 @@ package com.teachmehipaa;
 /** Literal API values from the developer spec's examples and shapes. */
 final class Fixtures {
   static final String LIVE_BASE = "https://api.tme.so/v1";
-  static final String SANDBOX_BASE = "https://api-teachmehipaa-dev.web.app/v1";
+  static final String SANDBOX_BASE = "https://sandbox.api.tme.so/v1";
 
   static final String CLIENT_ID = "cli_01JD8Z4N3QX5V7W9Y2B4C6D8EF";
   static final String CLIENT_SECRET = "tmh_cs_k3Jq9-Zx_8LmN2pR4tV6wY0aB1cD3eF5gH7iJ9kL0mN";

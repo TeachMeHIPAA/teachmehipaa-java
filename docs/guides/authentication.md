@@ -93,7 +93,7 @@ Credentials belong to exactly one Environment and fail in the other.
 | `Environment` constant | Base URL | Purpose |
 | --- | --- | --- |
 | `LIVE` (default) | `https://api.tme.so/v1` | Production |
-| `SANDBOX` | `https://api-teachmehipaa-dev.web.app/v1` | Development and tests; Learners are never emailed |
+| `SANDBOX` | `https://sandbox.api.tme.so/v1` | Development and tests; Learners are never emailed |
 
 `baseUrl(String)` replaces the Environment's URL, for example to reach a mock
 server. `auth().introspect().getMode()` reports `test` for a Sandbox token

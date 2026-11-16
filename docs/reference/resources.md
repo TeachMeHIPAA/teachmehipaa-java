@@ -4,7 +4,7 @@
 
 `TeachMeHipaaClient` exposes 13 services and 45 API methods, generated from Developer API release `trimmed-2026-11-15`. This page lists each method's signatures and wire behavior. The [Javadoc](https://teachmehipaa.github.io/teachmehipaa-java/) documents every type, and the [guides](../README.md) explain usage.
 
-A service is reached through its accessor, such as `client.learners()`. Parameters follow one order: path ids, then the method's `…Params` (from its `builder()`), then [`RequestOptions`](../guides/client.md#per-call-options). Shorter overloads omit what is optional. Each returned object carries `getLastResponse()`. Paths are relative to the Environment's base URL (Live is `https://api.tme.so/v1`; Sandbox is `https://api-teachmehipaa-dev.web.app/v1`), and the client supplies `{orgId}` from its [Organization binding](../guides/authentication.md#the-organization-binding).
+A service is reached through its accessor, such as `client.learners()`. Parameters follow one order: path ids, then the method's `…Params` (from its `builder()`), then [`RequestOptions`](../guides/client.md#per-call-options). Shorter overloads omit what is optional. Each returned object carries `getLastResponse()`. Paths are relative to the Environment's base URL (Live is `https://api.tme.so/v1`; Sandbox is `https://sandbox.api.tme.so/v1`), and the client supplies `{orgId}` from its [Organization binding](../guides/authentication.md#the-organization-binding).
 
 The blocking signatures of each method come first, followed by its `…Async` forms: the same overloads, returning `CompletableFuture<T>` of the blocking `T`. See [Async with CompletableFuture](../guides/async.md).
 

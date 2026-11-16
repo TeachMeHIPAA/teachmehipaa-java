@@ -6,7 +6,7 @@ package com.teachmehipaa;
  */
 public enum Environment {
   LIVE("https://api.tme.so/v1"),
-  SANDBOX("https://api-teachmehipaa-dev.web.app/v1");
+  SANDBOX("https://sandbox.api.tme.so/v1");
 
   private final String baseUrl;
 

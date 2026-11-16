@@ -45,8 +45,8 @@ class ClientConfigurationTest {
 
     client.learners().retrieve(LEARNER_ID);
 
-    assertEquals("https://api-teachmehipaa-dev.web.app/v1", client.getBaseUrl());
-    assertEquals(Set.of("https://api-teachmehipaa-dev.web.app"), originsCalled(api));
+    assertEquals("https://sandbox.api.tme.so/v1", client.getBaseUrl());
+    assertEquals(Set.of("https://sandbox.api.tme.so"), originsCalled(api));
     assertEquals("/v1/auth/token", api.requests().get(0).uri().getPath());
   }
 
