@@ -23,7 +23,7 @@ export TMH_CLIENT_SECRET=tmh_cs_...
 ```
 
 In your own project, add the library first (see
-[Getting started](../docs/guides/getting-started.md)) and copy an example in.
+[Installation](../docs/guides/installation.md)) and copy an example in.
 Each one is a single class with a `main` method and no package.
 
 `WebhookServer` also needs `TMH_WEBHOOK_SECRET`, the Signing secret of a

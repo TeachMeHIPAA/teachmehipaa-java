@@ -7,9 +7,9 @@ import java.util.stream.Collectors;
 
 /**
  * Renders {@code docs/reference/resources.md}: every service and method of the client, with its
- * overloads, HTTP route, Scopes, retry, idempotency and conditional behaviour, as partner
- * developers read it. Signatures come from the same decisions {@link ServiceWriter} renders, so the
- * two can't drift.
+ * overloads, HTTP route, Scopes, retry, idempotency and conditional behavior, as partner developers
+ * read it. Signatures come from the same decisions {@link ServiceWriter} renders, so the two can't
+ * drift.
  */
 final class ReferenceWriter {
   static final String PATH = "docs/reference/resources.md";
@@ -23,10 +23,10 @@ final class ReferenceWriter {
   private static final Map<String, String> HAND_WRITTEN =
       Map.of(
           "events",
-          "`events().tail(EventTailParams params)` is hand-written on top of `events().list`: it"
-              + " iterates the Event log oldest first and keeps its position in `lastEventId()`."
-              + " See [Pagination and the Event"
-              + " log](../guides/pagination-and-events.md#tailing-the-event-log).");
+          "`EventTail tail(EventTailParams params)` has no IR method of its own. It wraps"
+              + " `events().list` in an `Iterable<Event>` that walks the log oldest first and"
+              + " records its position in `lastEventId()`; see [Tailing the Event"
+              + " log](../guides/pagination.md#tailing-the-event-log).");
 
   private final Surface surface;
 
@@ -49,30 +49,30 @@ final class ReferenceWriter {
 
     List<String> blocks = new ArrayList<>();
     blocks.add(BANNER);
-    blocks.add("# API resources");
+    blocks.add("# Service reference");
     blocks.add(
-        "Every service and method of `TeachMeHipaaClient`: "
+        "`TeachMeHipaaClient` exposes "
             + nodes.size()
             + " services and "
             + methodCount
-            + " API methods, generated from the Developer API release "
+            + " API methods, generated from Developer API release "
             + code(surface.ir.source().release())
-            + ". For every class, field and builder, see the [Javadoc]("
+            + ". This page lists each method's signatures and wire behavior. The [Javadoc]("
             + JAVADOC
-            + "); for how the pieces fit together, the [guides](../README.md).");
+            + ") documents every type, and the [guides](../README.md) explain usage.");
     blocks.add(
-        "Reach a service from the client, such as `client.learners()`. Each method takes the"
-            + " path ids first, then its `…Params` (built with `builder()`), then"
-            + " [`RequestOptions`](../guides/errors-and-retries.md#request-options); the shorter"
-            + " overloads leave out what is optional. Every returned object has"
-            + " `getLastResponse()`. Paths are relative to the Environment's base URL ("
+        "A service is reached through its accessor, such as `client.learners()`. Parameters"
+            + " follow one order: path ids, then the method's `…Params` (from its `builder()`),"
+            + " then [`RequestOptions`](../guides/client.md#per-call-options). Shorter overloads"
+            + " omit what is optional. Each returned object carries `getLastResponse()`. Paths"
+            + " are relative to the Environment's base URL ("
             + servers
-            + "). The client fills in `{orgId}` from its [Organization"
+            + "), and the client supplies `{orgId}` from its [Organization"
             + " binding](../guides/authentication.md#the-organization-binding).");
     blocks.add(
-        "Each method has an `…Async` twin with the same overloads, listed after it, that returns a"
-            + " `CompletableFuture` of the same type without blocking the calling thread. See"
-            + " [Async calls](../guides/async.md).");
+        "The blocking signatures of each method come first, followed by its `…Async` forms:"
+            + " the same overloads, returning `CompletableFuture<T>` of the blocking `T`. See"
+            + " [Async with CompletableFuture](../guides/async.md).");
     blocks.add("## Contents");
     blocks.add(
         nodes.stream()
@@ -95,8 +95,8 @@ final class ReferenceWriter {
             .collect(Collectors.joining("\n")));
     blocks.add("## Scopes");
     blocks.add(
-        "An Access token carries the Scopes its API client holds, or fewer if you pass `scopes` to"
-            + " the client builder. A method that lists several Scopes needs any one of them. See"
+        "An Access token holds every Scope its API client holds, unless the builder's `scopes`"
+            + " narrows it. Where a method lists several Scopes, any one suffices. See"
             + " [Authentication](../guides/authentication.md#scopes).");
     blocks.add(
         table(
@@ -176,8 +176,8 @@ final class ReferenceWriter {
         List.of(
             "Retries",
             method.retrySafe()
-                ? "Retried on network errors, 409 `conflict`, 429 and 5xx"
-                : "Never retried: replaying it isn't safe"));
+                ? "Yes, after network failures, 409 `conflict`, 429 and 5xx"
+                : "No; a replay could repeat a change"));
     rows.add(List.of("Idempotency", idempotency(method.idempotencyKey())));
     List<String> notes = notes(plan);
     if (!notes.isEmpty()) {
@@ -198,13 +198,15 @@ final class ReferenceWriter {
     List<String> notes = new ArrayList<>();
     if ("required".equals(method.ifMatch())) {
       notes.add(
-          "`ifMatch` is required: the ETag, or the object you read. `build()` throws without it,"
-              + " and a stale ETag throws `PreconditionFailedException`.");
+          "Requires `ifMatch`, given an ETag or the object you read; `build()` throws"
+              + " `IllegalStateException` without it. A stale ETag fails with"
+              + " `PreconditionFailedException`.");
     } else if ("optional".equals(method.ifMatch())) {
-      notes.add("Takes an optional `ifMatch`: the ETag, or the object you read.");
+      notes.add("Accepts an optional `ifMatch`, given an ETag or the object you read.");
     }
     if (plan.mergePatch()) {
-      notes.add("A merge patch: fields you don't set are left alone, and `clearX()` sends `null`.");
+      notes.add(
+          "Sends an RFC 7396 merge patch: unset fields stay unchanged, and `clearX()` sends `null`.");
     }
     if (plan.ifModifiedName() != null) {
       notes.add(
@@ -215,23 +217,26 @@ final class ReferenceWriter {
     if (plan.streamName() != null) {
       notes.add(
           code(plan.streamName())
-              + " hands over the body unread; close it to release the connection.");
+              + " returns the body unread as an `AutoCloseable`; close it, ideally with"
+              + " try-with-resources, to release the connection.");
     }
     if (method.response() instanceof Ir.OperationResponse) {
-      notes.add("Returns an Operation: `waitForCompletion()` polls until it is done.");
+      notes.add(
+          "Returns an `Operation`; `waitForCompletion()` or `waitForCompletionAsync()` polls until it is done.");
     }
     if (method.pagination() != null) {
       notes.add(
           "One page of up to "
               + method.pagination().maxLimit()
-              + " items; `autoPagingIterable()` and `autoPagingStream()` fetch the rest.");
+              + " items. `autoPagingIterable()` and `autoPagingStream()` fetch later pages on"
+              + " demand.");
     }
     return notes;
   }
 
   private static String scopes(Ir.Security security) {
     if ("none".equals(security.kind())) {
-      return "None: a public method, sent without an Access token";
+      return "None; public, sent without an Access token";
     }
     List<List<String>> sets = security.anyOf() == null ? List.of(List.of()) : security.anyOf();
     if (sets.stream().anyMatch(List::isEmpty)) {

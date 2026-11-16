@@ -1,14 +1,15 @@
 # Webhooks
 
-A **Webhook subscription** tells TeachMeHIPAA to POST Events of the types you
-choose, such as `learner.certified`, to your HTTPS endpoint. Each POST is a
-**Delivery**, signed with the subscription's **Signing secret** so you can
-prove it came from TeachMeHIPAA. Failed Deliveries are retried until they
-succeed or are dead-lettered.
+A **Webhook subscription** makes TeachMeHIPAA POST the Events you select,
+such as `learner.certified`, to an HTTPS endpoint you run. Each POST is a
+**Delivery**. Every Delivery is signed with the subscription's **Signing
+secret**, and a Delivery your endpoint does not acknowledge with a 2xx is
+sent again until it succeeds or is dead-lettered.
 
 Samples use a `client` built as in [Getting started](getting-started.md).
+Managing subscriptions requires the `webhooks:manage` Scope.
 
-## Create a Webhook subscription
+## Creating a subscription
 
 <!-- sample: webhook-subscription-create -->
 ```java
@@ -34,57 +35,52 @@ System.out.println(subscription.getSubscriptionId() + " " + subscription.getSecr
 database.saveSigningSecret(subscription.getSecret());
 ```
 
-The response holds the Signing secret in `getSecret()` **only once**: store it
-right away, in the place your handler reads it from (here `database` stands
-in for your secret store). Managing subscriptions needs the `webhooks:manage`
-Scope.
+`WebhookSubscriptionCreated.getSecret()` returns the Signing secret in this
+response and never again. Write it to your secret store before doing
+anything else; `database` stands for that store here.
 
-`webhookSubscriptions().list`, `retrieve`, `update` and `delete` manage
-subscriptions; `update` needs the subscription's ETag (see
-[Conditional requests](conditional-requests.md)), and `enabled(false)` pauses
-Deliveries.
+`webhookSubscriptions()` also has `list`, `retrieve`, `update` and `delete`.
+`update` requires the subscription's ETag (see
+[Optimistic concurrency](optimistic-concurrency.md)); `enabled(false)` pauses
+Deliveries without deleting the subscription.
 
-## Verify every Delivery
+## Verifying a Delivery
 
-`Webhook.constructEvent` verifies a Delivery and returns a `WebhookDelivery`:
-an `EventDelivery` holding the Event, or a `TestDeliveryReceived`. It needs
-four things, three of them exactly as they arrived:
+`Webhook.constructEvent` checks a Delivery's signature and returns a
+`WebhookDelivery`: either `WebhookDelivery.EventDelivery`, holding the
+`Event`, or `WebhookDelivery.TestDeliveryReceived`. The method is static and
+needs no client or API credentials. Code that already holds a client can call
+the same methods on `client.webhooks()`.
 
-1. **The raw body.** Parsed and re-serialized JSON never verifies, so read
-   the body as bytes before anything parses it.
-2. **The headers.** A `Map`, or a lookup such as a servlet's
-   `request::getHeader` or Spring's `HttpHeaders::getFirst`.
-3. **The Signing secret** of the subscription.
-4. **The request path, with its query string, or the full URL.** The
-   signature covers the path the Delivery was sent to, so a verifier that
-   drops the path, a context path or the query string rejects every
-   Delivery.
+It takes four arguments, three of which must be exactly what arrived:
 
-Deliveries signed more than 5 minutes from your clock, in either direction,
-are rejected, so keep your server's clock in sync. A failed check throws
-`WebhookSignatureException`, whose `getCode()` says why:
+| Argument | Requirement |
+| --- | --- |
+| Body | The raw bytes, read before any framework parses them. Re-serialized JSON never verifies. |
+| Headers | A `Map<String, String>`, or a lookup such as `HttpServletRequest::getHeader` or Spring's `HttpHeaders::getFirst` |
+| Signing secret | The subscription's secret, from your store |
+| Path | The request path including any query string, or the full URL. The signature covers it, so a dropped context path or query string fails every Delivery. |
 
-| `getCode()`                   | Meaning                                                      |
-| ----------------------------- | ------------------------------------------------------------ |
-| `missing_header`              | A signature header is missing                                |
-| `invalid_timestamp`           | `x-tmh-timestamp` isn't an ISO 8601 date-time                |
-| `body_hash_mismatch`          | The body isn't the one that was signed (it was parsed?)      |
-| `signature_mismatch`          | Wrong secret, wrong path, or a forged Delivery               |
-| `timestamp_outside_tolerance` | Signed more than 5 minutes from now: a replay, or clock skew |
+A Delivery signed more than 5 minutes before or after your server's clock is
+rejected, so keep the clock synchronized with NTP. Verification failures throw
+`WebhookSignatureException`; its `getCode()` names the check that failed:
 
-`WebhookSignatureException` has a constant for each, such as
-`WebhookSignatureException.SIGNATURE_MISMATCH`. Answer it with 400 and do
-nothing else. The exception never carries the body or headers, which hold
-Learner details, so it is safe to log.
+| `getCode()` | Constant | Cause |
+| --- | --- | --- |
+| `missing_header` | `MISSING_HEADER` | A signature header is absent |
+| `invalid_timestamp` | `INVALID_TIMESTAMP` | `x-tmh-timestamp` is not an ISO 8601 date-time |
+| `body_hash_mismatch` | `BODY_HASH_MISMATCH` | The body differs from the signed body, typically because something parsed it |
+| `signature_mismatch` | `SIGNATURE_MISMATCH` | Wrong secret, wrong path, or a forged Delivery |
+| `timestamp_outside_tolerance` | `TIMESTAMP_OUTSIDE_TOLERANCE` | Signed more than 5 minutes from now: a replay, or clock skew |
 
-`Webhook` needs only the Signing secret, never API credentials, so a handler
-doesn't need a client. Code that already holds one can call the same methods
-on `client.webhooks()`.
+Answer a `WebhookSignatureException` with 400 and take no other action. The
+exception carries neither body nor headers, which hold Learner details, so it
+is safe to log.
 
-### Spring Boot
+### Spring MVC
 
-Take the body as `@RequestBody byte[]` so Spring hands it over untouched, and
-rebuild the path from the request URI and query string:
+Declare the body as `@RequestBody byte[]` so no message converter touches it,
+and rebuild the path from the request URI and query string:
 
 <!-- sample: webhook-spring -->
 ```java
@@ -122,13 +118,13 @@ public class TmhWebhookController {
 }
 ```
 
-`getRequestURI()` includes the servlet context path, which is part of the
-path the Delivery was sent to, so keep it.
+`getRequestURI()` includes the servlet context path. The Delivery was signed
+for the full path, so keep it.
 
-### Servlets
+### Jakarta Servlet
 
-With a plain servlet, read `request.getInputStream()` before anything else
-touches the body:
+Read `getInputStream()` before any filter or parameter lookup consumes the
+body:
 
 <!-- sample: webhook-servlet -->
 ```java
@@ -168,10 +164,10 @@ public class TmhWebhookServlet extends HttpServlet {
 }
 ```
 
-### The JDK's HTTP server
+### `com.sun.net.httpserver`
 
-`com.sun.net.httpserver` ships with the JDK, so this handler needs nothing
-but the library. Register it with
+The JDK's built-in HTTP server needs no dependency beyond the library.
+Register the handler with
 `server.createContext("/webhooks/tmh", new TmhWebhookHandler())`:
 
 <!-- sample: webhook-jdk-server -->
@@ -220,24 +216,19 @@ public class TmhWebhookHandler implements HttpHandler {
 }
 ```
 
-The [webhook server example](../../examples/WebhookServer.java) runs this
-handler as a whole program.
+[`WebhookServer.java`](../../examples/WebhookServer.java) runs this handler
+as a standalone program.
 
-## Handle Events
+## Processing Events
 
-- **Answer fast.** Return a 2xx as soon as the Delivery verifies, and do slow
-  work afterwards, such as from a queue. A Delivery that times out or fails is
-  delivered again.
-- **Expect duplicates.** A retried Delivery carries the same Event, with the
-  same `getEventId()`. Record the ids you've handled and skip repeats.
-- **Expect new Event types.** Event types are added over time. One this
-  version doesn't know arrives as an `UnknownEvent`, with its
-  `getEventType()` and `getData()` as sent, so your handler keeps working;
-  ignore types you don't use.
-- **Don't rely on order.** A retried Delivery can arrive after a later one.
-  Compare `getOccurredAt()`, or read the current state with the API.
+| Rule | Reason |
+| --- | --- |
+| Return 2xx as soon as the Delivery verifies; queue slow work | A Delivery that times out is delivered again |
+| Deduplicate on `getEventId()` | A redelivered Event keeps its id |
+| Ignore Event types you don't handle | New types arrive as `UnknownEvent` without a library upgrade |
+| Order by `getOccurredAt()`, or re-read state from the API | A retried Delivery can arrive after a later one |
 
-Here `database` stands in for your own store of handled ids:
+`database` stands for your record of processed Event ids:
 
 <!-- sample: webhook-dedupe -->
 ```java
@@ -261,17 +252,16 @@ void handleDelivery(byte[] body, Function<String, String> headers, String path) 
 }
 ```
 
-If your endpoint was down, `webhookSubscriptions().redrive` delivers the
-subscription's failed Events again, and the
-[Event log](pagination-and-events.md#the-event-log) has every Event of the
-last 30 days.
+After an outage, `webhookSubscriptions().redrive` sends the subscription's
+failed Events again, and the [Event log](pagination.md#the-event-log) holds
+every Event of the last 30 days.
 
 ## Test deliveries
 
 `webhookSubscriptions().test` sends a signed **Test delivery** to the
-subscription's endpoint, so you can check your verifier end to end. It
-returns a `WebhookDeliveryOperation`; wait on it, then
-`getDeliveryResult()` says how the Delivery ended:
+endpoint, which exercises your verifier end to end. It returns a
+`WebhookDeliveryOperation`. After `waitForCompletion()`,
+`getDeliveryResult()` reports the outcome:
 
 <!-- sample: webhook-delivery-operation -->
 ```java
@@ -290,19 +280,17 @@ if (result instanceof WebhookDeliveryResult.Sent sent) {
 }
 ```
 
-The result is `Sent`, `Failed` or `Settled` (the Delivery had already ended).
-Kinds this version doesn't know arrive as `WebhookDeliveryResult.Unknown`, so
-keep the fallback branch. `redrive` returns the same type.
+`WebhookDeliveryResult` is a sealed interface: `Sent`, `Failed`, `Settled`
+(the Delivery had already ended) and `Unknown` for an outcome this version
+does not recognize. `redrive` returns the same type. A Test delivery carries
+no Event, so `constructEvent` returns it as `TestDeliveryReceived`, whose
+`testDelivery()` holds the subscription id.
 
-A Test delivery carries no Event: `constructEvent` returns it as a
-`TestDeliveryReceived`, whose `testDelivery()` holds the subscription id.
+## Signing Deliveries in tests
 
-## Sign Deliveries in your own tests
-
-`Webhook.generateTestHeaders` returns the headers TeachMeHIPAA would send with
-a payload, so you can test your handler without a real Delivery. Sign the
-exact body and path you'll send, and match an `EventDelivery`'s Event against
-the `Event…` types to read its data:
+`Webhook.generateTestHeaders` produces the headers TeachMeHIPAA would send
+for a payload and path. Use it to drive a handler in a unit test without a
+real Delivery. Sign the exact bytes and path the test sends:
 
 <!-- sample: webhook-test-headers -->
 ```java
@@ -330,10 +318,10 @@ if (delivery instanceof WebhookDelivery.EventDelivery received
 }
 ```
 
-`Webhook.TestHeaderOptions` signs as of another time, or sets the Event id,
-Event type and key id headers. `Webhook.VerifyOptions` allows a different
-tolerance, or checks a Delivery your queue stored against when it arrived
-rather than now:
+`Webhook.TestHeaderOptions` signs as of another instant, or sets the Event
+id, Event type and key id headers. `Webhook.VerifyOptions` changes the
+tolerance, or verifies a Delivery your queue stored against the time it
+arrived instead of now:
 
 <!-- sample: webhook-verify-options -->
 ```java
@@ -375,22 +363,21 @@ WebhookDelivery delivery =
 System.out.println("verified " + (delivery instanceof WebhookDelivery.EventDelivery));
 ```
 
-[Testing](testing.md#test-your-webhook-handler) shows this in a handler test.
+[Testing](testing.md#test-your-webhook-handler) puts this in a JUnit test.
 
-## Signature details
+## Signature scheme
 
-You don't need these to use `constructEvent`, but they help when debugging.
-Each Delivery carries:
+`constructEvent` implements this; the details help when a verification fails.
 
-| Header             | Holds                                       |
-| ------------------ | ------------------------------------------- |
-| `x-tmh-signature`  | Hex HMAC-SHA256 of the canonical string     |
-| `x-tmh-timestamp`  | When it was signed, ISO 8601                |
-| `x-tmh-body-hash`  | Hex SHA-256 of the body                     |
-| `x-tmh-event-id`   | The Event's id (a UUID for a Test delivery) |
-| `x-tmh-event-type` | The Event type                              |
-| `x-tmh-key-id`     | Which Signing secret signed it              |
+| Header | Value |
+| --- | --- |
+| `x-tmh-signature` | Hex HMAC-SHA256 of the canonical string |
+| `x-tmh-timestamp` | Signing time, ISO 8601 |
+| `x-tmh-body-hash` | Hex SHA-256 of the body |
+| `x-tmh-event-id` | The Event id; a UUID for a Test delivery |
+| `x-tmh-event-type` | The Event type |
+| `x-tmh-key-id` | The id of the Signing secret that signed it |
 
-The canonical string is `POST`, the path with its query string, the
-timestamp and the body hash, joined by newlines. The HMAC key is the Signing
+The canonical string joins four lines with `\n`: `POST`, the path with its
+query string, the timestamp and the body hash. The HMAC key is the Signing
 secret's UTF-8 bytes, used as is (not base64-decoded).

@@ -1,66 +1,31 @@
 # Getting started
 
-This guide takes you from nothing to inviting your first Learner in the
-Sandbox Environment. It takes about ten minutes.
+The steps below take a JVM service from no dependency to an invited Learner
+in the Sandbox. They assume the library is on your classpath; if it is not,
+see [Installation](installation.md).
 
-## 1. Add the library
-
-The Developer API is in pre-release and the library isn't on Maven Central
-yet, so build it from source and install it into your local Maven repository
-(`~/.m2`):
-
-```sh
-git clone https://github.com/TeachMeHIPAA/teachmehipaa-java.git
-cd teachmehipaa-java
-./gradlew publishToMavenLocal   # installs com.teachmehipaa:teachmehipaa-java:0.1.0-SNAPSHOT
-```
-
-Then add `mavenLocal()` and the dependency to your project. With Gradle
-(Kotlin DSL):
-
-```kotlin
-repositories {
-  mavenLocal()
-  mavenCentral()
-}
-
-dependencies {
-  implementation("com.teachmehipaa:teachmehipaa-java:0.1.0-SNAPSHOT")
-}
-```
-
-With Maven, which reads `~/.m2` already:
-
-```xml
-<dependency>
-  <groupId>com.teachmehipaa</groupId>
-  <artifactId>teachmehipaa-java</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
-</dependency>
-```
-
-You need Java 17 or newer. The library's only dependency is Jackson, and it
-sends requests with the JDK's own `java.net.http.HttpClient`.
-
-## 2. Get Sandbox credentials
+## Credentials
 
 An Organization admin creates an **API client** in the TeachMeHIPAA console.
-It has a client id (`cli_…`) and a client secret (`tmh_cs_…`), and belongs to
-exactly one Organization. Create it in the Sandbox Environment first: Sandbox
-Learners are never emailed, so you can experiment freely.
+An API client has a client id (`cli_…`) and a client secret (`tmh_cs_…`) and
+belongs to exactly one Organization and one Environment. Create the first one
+in the **Sandbox**: it accepts the same calls as Live and never emails a
+Learner.
 
-Keep the secret on your server. Put both values in the environment:
+Supply both values from your secret store or the process environment. The
+samples read environment variables:
 
 ```sh
 export TMH_CLIENT_ID=cli_...
 export TMH_CLIENT_SECRET=tmh_cs_...
 ```
 
-## 3. Make your first call
+## Build the client and make a call
 
-Build one client and share it for the life of your process: it is
-thread-safe. It fetches an Access token on the first call and renews it
-before it expires.
+`TeachMeHipaaClient` is built once and shared: it is immutable and
+thread-safe, and it caches the Access token it mints. A Spring application
+registers it as a singleton `@Bean`; a plain service keeps it in a `static
+final` field or passes it to the objects that need it.
 
 <!-- sample: getting-started-first-call -->
 ```java
@@ -80,17 +45,20 @@ System.out.println(
     summary.getTotals().getCompliant() + " of " + summary.getTotals().getLearners() + " compliant");
 ```
 
-You never pass an Organization id: the client asks the API which Organization
-your API client belongs to, once, and remembers it. See
-[Authentication](authentication.md) for the details.
+The client fetched an Access token, asked the API which Organization the
+token belongs to and then read the summary: three requests, of which only the
+last repeats on later calls. [Authentication](authentication.md) explains
+the token cache and the Organization binding.
 
-## 4. Invite a Learner
+## Invite a Learner
 
-Samples from here on use a `client` built as above.
+The remaining samples use the `client` built above.
 
-`learners().create` invites someone to a Course by email. The result's
-`isCreated()` says whether this call created the Learner or found an existing
-one.
+`learners().create` takes a `LearnerCreateParams`, built with its builder.
+`build()` throws `IllegalStateException` when a required field such as
+`email` is missing, before anything reaches the network. The returned
+`LearnerWriteResult` reports through `isCreated()` whether this call created
+the Learner (201) or found an existing one (200).
 
 <!-- sample: getting-started-invite -->
 ```java
@@ -109,10 +77,11 @@ LearnerWriteResult learner =
 System.out.println(learner.getLearnerId() + " " + (learner.isCreated() ? "invited" : "already there"));
 ```
 
-If you sync people from another system, prefer
-`learners().upsertByExternalId`, keyed by your own id for the person, their
-External ID. It creates and invites the Learner the first time and returns
-them every time after, so a sync job can replay it safely:
+A job that mirrors an HR system calls `learners().upsertByExternalId`
+instead. The External ID is your own identifier for the person. The first
+call creates and invites the Learner; every later call with the same External
+ID returns the same Learner, so a nightly job can run it again without
+creating duplicates.
 
 <!-- sample: getting-started-upsert -->
 ```java
@@ -131,16 +100,17 @@ LearnerWriteResult synced =
 System.out.println(synced.getLearnerId() + " " + synced.isCreated());
 ```
 
-The [roster sync example](../../examples/SyncRoster.java) shows it end to
-end.
+[`SyncRoster.java`](../../examples/SyncRoster.java) runs a complete roster
+sync this way.
 
-## 5. Handle failures
+## Catch a failure
 
-A failed call throws a subclass of `TeachMeHipaaException`, which is
-unchecked. Catch the class you can handle, or branch on its `getCode()`, and
-log the `getRequestId()` so support can find the request. Here the
-`REQUIRE_AVAILABLE` Seat policy makes the create fail with a 409 when no Seat
-is free:
+Every exception the library throws for a failed call extends
+`TeachMeHipaaException`, an unchecked exception. Catch the most specific
+subclass you can act on, branch on `getCode()` within it, and log
+`getRequestId()`: support needs it to find the request. With the
+`REQUIRE_AVAILABLE` Seat policy, `create` fails with 409 `seat_unavailable`
+when the Organization has no free Seat:
 
 <!-- sample: getting-started-errors -->
 ```java
@@ -168,11 +138,13 @@ try {
 }
 ```
 
-## Next steps
+## Where to go next
 
-- [Pagination and the Event log](pagination-and-events.md) to read lists and
-  follow what changes.
-- [Webhooks](webhooks.md) to be told when a Learner is certified.
-- [Errors and retries](errors-and-retries.md) for every exception and how
-  the client retries.
-- The [resource reference](../reference/resources.md) for every method.
+| Task | Guide |
+| --- | --- |
+| Tune timeouts, retries, logging or the HTTP client | [The client](client.md) |
+| Map every exception to an HTTP status | [Exceptions and retries](exceptions.md) |
+| Call the API from reactive or async code | [Async with CompletableFuture](async.md) |
+| Read every Learner, or follow the Event log | [Pagination and the Event log](pagination.md) |
+| Receive `learner.certified` as it happens | [Webhooks](webhooks.md) |
+| Look up a method's route, Scopes and overloads | [Resource reference](../reference/resources.md) |

@@ -1,12 +1,12 @@
 <!-- Generated from openapi/sdk-ir.json by generator/. Do not edit: run ./gradlew generate. -->
 
-# API resources
+# Service reference
 
-Every service and method of `TeachMeHipaaClient`: 13 services and 45 API methods, generated from the Developer API release `trimmed-2026-11-15`. For every class, field and builder, see the [Javadoc](https://teachmehipaa.github.io/teachmehipaa-java/); for how the pieces fit together, the [guides](../README.md).
+`TeachMeHipaaClient` exposes 13 services and 45 API methods, generated from Developer API release `trimmed-2026-11-15`. This page lists each method's signatures and wire behavior. The [Javadoc](https://teachmehipaa.github.io/teachmehipaa-java/) documents every type, and the [guides](../README.md) explain usage.
 
-Reach a service from the client, such as `client.learners()`. Each method takes the path ids first, then its `…Params` (built with `builder()`), then [`RequestOptions`](../guides/errors-and-retries.md#request-options); the shorter overloads leave out what is optional. Every returned object has `getLastResponse()`. Paths are relative to the Environment's base URL (Live is `https://api.tme.so/v1`; Sandbox is `https://api-teachmehipaa-dev.web.app/v1`). The client fills in `{orgId}` from its [Organization binding](../guides/authentication.md#the-organization-binding).
+A service is reached through its accessor, such as `client.learners()`. Parameters follow one order: path ids, then the method's `…Params` (from its `builder()`), then [`RequestOptions`](../guides/client.md#per-call-options). Shorter overloads omit what is optional. Each returned object carries `getLastResponse()`. Paths are relative to the Environment's base URL (Live is `https://api.tme.so/v1`; Sandbox is `https://api-teachmehipaa-dev.web.app/v1`), and the client supplies `{orgId}` from its [Organization binding](../guides/authentication.md#the-organization-binding).
 
-Each method has an `…Async` twin with the same overloads, listed after it, that returns a `CompletableFuture` of the same type without blocking the calling thread. See [Async calls](../guides/async.md).
+The blocking signatures of each method come first, followed by its `…Async` forms: the same overloads, returning `CompletableFuture<T>` of the blocking `T`. See [Async with CompletableFuture](../guides/async.md).
 
 ## Contents
 
@@ -26,7 +26,7 @@ Each method has an `…Async` twin with the same overloads, listed after it, tha
 
 ## Scopes
 
-An Access token carries the Scopes its API client holds, or fewer if you pass `scopes` to the client builder. A method that lists several Scopes needs any one of them. See [Authentication](../guides/authentication.md#scopes).
+An Access token holds every Scope its API client holds, unless the builder's `scopes` narrows it. Where a method lists several Scopes, any one suffices. See [Authentication](../guides/authentication.md#scopes).
 
 | Scope | Allows |
 | --- | --- |
@@ -65,9 +65,9 @@ CompletableFuture<Page<AuditEvent>> listAsync(AuditEventListParams params, Reque
 | Scopes | `audit:read` |
 | Params | `AuditEventListParams`, optional |
 | Returns | `Page<AuditEvent>` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
-| Notes | One page of up to 100 items; `autoPagingIterable()` and `autoPagingStream()` fetch the rest. |
+| Notes | One page of up to 100 items. `autoPagingIterable()` and `autoPagingStream()` fetch later pages on demand. |
 
 ## `auth()`
 
@@ -90,7 +90,7 @@ CompletableFuture<TokenIntrospection> introspectAsync(RequestOptions options)
 | Scopes | Any Access token |
 | Params | None |
 | Returns | `TokenIntrospection` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 
 ## `certificateVerifications()`
@@ -111,10 +111,10 @@ CompletableFuture<CertificateVerification> retrieveAsync(String tinyId, RequestO
 |  |  |
 | --- | --- |
 | HTTP | `GET /certificate-verifications/{tinyId}` |
-| Scopes | None: a public method, sent without an Access token |
+| Scopes | None; public, sent without an Access token |
 | Params | None |
 | Returns | `CertificateVerification` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 
 ## `certificates()`
@@ -142,9 +142,9 @@ CompletableFuture<BinaryStreamResponse> downloadPdfStreamAsync(String certId, Re
 | Scopes | `certificates:read` |
 | Params | None |
 | Returns | `BinaryResponse` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
-| Notes | `downloadPdfStream` hands over the body unread; close it to release the connection. |
+| Notes | `downloadPdfStream` returns the body unread as an `AutoCloseable`; close it, ideally with try-with-resources, to release the connection. |
 
 ### `certificates().export`
 
@@ -165,9 +165,9 @@ CompletableFuture<Operation> exportAsync(CertificateExportParams params, Request
 | Scopes | `certificates:read` |
 | Params | `CertificateExportParams`, required |
 | Returns | `Operation` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
-| Notes | Returns an Operation: `waitForCompletion()` polls until it is done. |
+| Notes | Returns an `Operation`; `waitForCompletion()` or `waitForCompletionAsync()` polls until it is done. |
 
 ### `certificates().list`
 
@@ -192,9 +192,9 @@ CompletableFuture<Page<Certificate>> listAsync(CertificateListParams params, Req
 | Scopes | `certificates:read` |
 | Params | `CertificateListParams`, optional |
 | Returns | `Page<Certificate>` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
-| Notes | One page of up to 100 items; `autoPagingIterable()` and `autoPagingStream()` fetch the rest. |
+| Notes | One page of up to 100 items. `autoPagingIterable()` and `autoPagingStream()` fetch later pages on demand. |
 
 ### `certificates().retrieve`
 
@@ -215,7 +215,7 @@ CompletableFuture<Certificate> retrieveAsync(String certId, RequestOptions optio
 | Scopes | `certificates:read` |
 | Params | None |
 | Returns | `Certificate` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 
 ### `certificates().retrieveLinks`
@@ -237,7 +237,7 @@ CompletableFuture<CertificateLinks> retrieveLinksAsync(String certId, RequestOpt
 | Scopes | `certificates:read` |
 | Params | None |
 | Returns | `CertificateLinks` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 
 ## `compliance()`
@@ -265,7 +265,7 @@ CompletableFuture<ComplianceSummary> retrieveAsync(ComplianceRetrieveParams para
 | Scopes | `compliance:read` |
 | Params | `ComplianceRetrieveParams`, optional |
 | Returns | `ComplianceSummary` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 
 ## `courses()`
@@ -290,12 +290,12 @@ CompletableFuture<Page<Course>> listAsync(CourseListParams params, RequestOption
 |  |  |
 | --- | --- |
 | HTTP | `GET /courses` |
-| Scopes | None: a public method, sent without an Access token |
+| Scopes | None; public, sent without an Access token |
 | Params | `CourseListParams`, optional |
 | Returns | `Page<Course>` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
-| Notes | One page of up to 100 items; `autoPagingIterable()` and `autoPagingStream()` fetch the rest. |
+| Notes | One page of up to 100 items. `autoPagingIterable()` and `autoPagingStream()` fetch later pages on demand. |
 
 ### `courses().retrieve`
 
@@ -321,10 +321,10 @@ CompletableFuture<Optional<Course>> retrieveIfModifiedAsync(String courseId, Str
 |  |  |
 | --- | --- |
 | HTTP | `GET /courses/{courseId}` |
-| Scopes | None: a public method, sent without an Access token |
+| Scopes | None; public, sent without an Access token |
 | Params | None |
 | Returns | `Course` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 | Notes | `retrieveIfModified` sends `If-None-Match` and returns an empty `Optional` when your copy is still current (304). |
 
@@ -349,7 +349,7 @@ CompletableFuture<EnrollmentsBatchResults> batchAsync(EnrollmentBatchParams para
 | Scopes | `enrollments:write` |
 | Params | `EnrollmentBatchParams`, required |
 | Returns | `EnrollmentsBatchResults` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
 
 ### `enrollments().batchByFilter`
@@ -371,9 +371,9 @@ CompletableFuture<Operation> batchByFilterAsync(EnrollmentBatchByFilterParams pa
 | Scopes | `enrollments:write` |
 | Params | `EnrollmentBatchByFilterParams`, required |
 | Returns | `Operation` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
-| Notes | Returns an Operation: `waitForCompletion()` polls until it is done. |
+| Notes | Returns an `Operation`; `waitForCompletion()` or `waitForCompletionAsync()` polls until it is done. |
 
 ### `enrollments().cancel`
 
@@ -398,7 +398,7 @@ CompletableFuture<CancelEnrollmentResponse> cancelAsync(String enrollmentId, Enr
 | Scopes | `enrollments:write` |
 | Params | `EnrollmentCancelParams`, optional |
 | Returns | `CancelEnrollmentResponse` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
 
 ### `enrollments().create`
@@ -420,7 +420,7 @@ CompletableFuture<Enrollment> createAsync(EnrollmentCreateParams params, Request
 | Scopes | `enrollments:write` |
 | Params | `EnrollmentCreateParams`, required |
 | Returns | `Enrollment` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
 
 ### `enrollments().export`
@@ -442,9 +442,9 @@ CompletableFuture<Operation> exportAsync(EnrollmentExportParams params, RequestO
 | Scopes | `enrollments:read` |
 | Params | `EnrollmentExportParams`, required |
 | Returns | `Operation` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
-| Notes | Returns an Operation: `waitForCompletion()` polls until it is done. |
+| Notes | Returns an `Operation`; `waitForCompletion()` or `waitForCompletionAsync()` polls until it is done. |
 
 ### `enrollments().importEnrollments`
 
@@ -465,9 +465,9 @@ CompletableFuture<Operation> importEnrollmentsAsync(EnrollmentImportParams param
 | Scopes | `enrollments:write` |
 | Params | `EnrollmentImportParams`, required |
 | Returns | `Operation` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
-| Notes | Returns an Operation: `waitForCompletion()` polls until it is done. |
+| Notes | Returns an `Operation`; `waitForCompletion()` or `waitForCompletionAsync()` polls until it is done. |
 
 ### `enrollments().list`
 
@@ -492,9 +492,9 @@ CompletableFuture<Page<OrgEnrollmentListItem>> listAsync(EnrollmentListParams pa
 | Scopes | `enrollments:read` |
 | Params | `EnrollmentListParams`, optional |
 | Returns | `Page<OrgEnrollmentListItem>` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
-| Notes | One page of up to 1000 items; `autoPagingIterable()` and `autoPagingStream()` fetch the rest. |
+| Notes | One page of up to 1000 items. `autoPagingIterable()` and `autoPagingStream()` fetch later pages on demand. |
 
 ### `enrollments().previewImport`
 
@@ -515,7 +515,7 @@ CompletableFuture<ImportPreview> previewImportAsync(EnrollmentPreviewImportParam
 | Scopes | `enrollments:write` |
 | Params | `EnrollmentPreviewImportParams`, required |
 | Returns | `ImportPreview` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
 
 ### `enrollments().remind`
@@ -537,7 +537,7 @@ CompletableFuture<EnrollmentActionAccepted> remindAsync(String enrollmentId, Req
 | Scopes | `enrollments:write` |
 | Params | None |
 | Returns | `EnrollmentActionAccepted` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
 
 ### `enrollments().renew`
@@ -559,7 +559,7 @@ CompletableFuture<Enrollment> renewAsync(String enrollmentId, RequestOptions opt
 | Scopes | `enrollments:write` |
 | Params | None |
 | Returns | `Enrollment` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
 
 ### `enrollments().resendInvite`
@@ -581,7 +581,7 @@ CompletableFuture<EnrollmentActionAccepted> resendInviteAsync(String enrollmentI
 | Scopes | `enrollments:write` |
 | Params | None |
 | Returns | `EnrollmentActionAccepted` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
 
 ### `enrollments().retrieve`
@@ -611,13 +611,13 @@ CompletableFuture<Optional<Enrollment>> retrieveIfModifiedAsync(String enrollmen
 | Scopes | `enrollments:read` |
 | Params | None |
 | Returns | `Enrollment` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 | Notes | `retrieveIfModified` sends `If-None-Match` and returns an empty `Optional` when your copy is still current (304). |
 
 ## `events()`
 
-`events().tail(EventTailParams params)` is hand-written on top of `events().list`: it iterates the Event log oldest first and keeps its position in `lastEventId()`. See [Pagination and the Event log](../guides/pagination-and-events.md#tailing-the-event-log).
+`EventTail tail(EventTailParams params)` has no IR method of its own. It wraps `events().list` in an `Iterable<Event>` that walks the log oldest first and records its position in `lastEventId()`; see [Tailing the Event log](../guides/pagination.md#tailing-the-event-log).
 
 ### `events().list`
 
@@ -642,9 +642,9 @@ CompletableFuture<Page<Event>> listAsync(EventListParams params, RequestOptions 
 | Scopes | `webhooks:manage` or `audit:read` |
 | Params | `EventListParams`, optional |
 | Returns | `Page<Event>` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
-| Notes | One page of up to 100 items; `autoPagingIterable()` and `autoPagingStream()` fetch the rest. |
+| Notes | One page of up to 100 items. `autoPagingIterable()` and `autoPagingStream()` fetch later pages on demand. |
 
 ## `learners()`
 
@@ -667,9 +667,9 @@ CompletableFuture<Operation> batchUpsertAsync(LearnerBatchUpsertParams params, R
 | Scopes | `learners:write` |
 | Params | `LearnerBatchUpsertParams`, required |
 | Returns | `Operation` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
-| Notes | Returns an Operation: `waitForCompletion()` polls until it is done. |
+| Notes | Returns an `Operation`; `waitForCompletion()` or `waitForCompletionAsync()` polls until it is done. |
 
 ### `learners().create`
 
@@ -690,7 +690,7 @@ CompletableFuture<LearnerWriteResult> createAsync(LearnerCreateParams params, Re
 | Scopes | `learners:write` |
 | Params | `LearnerCreateParams`, required |
 | Returns | `LearnerWriteResult` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
 
 ### `learners().createLaunchLink`
@@ -716,7 +716,7 @@ CompletableFuture<LearnerLaunchLink> createLaunchLinkAsync(String learnerId, Lea
 | Scopes | `learners:write` |
 | Params | `LearnerCreateLaunchLinkParams`, optional |
 | Returns | `LearnerLaunchLink` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 
 ### `learners().export`
@@ -738,9 +738,9 @@ CompletableFuture<Operation> exportAsync(LearnerExportParams params, RequestOpti
 | Scopes | `learners:read` |
 | Params | `LearnerExportParams`, required |
 | Returns | `Operation` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
-| Notes | Returns an Operation: `waitForCompletion()` polls until it is done. |
+| Notes | Returns an `Operation`; `waitForCompletion()` or `waitForCompletionAsync()` polls until it is done. |
 
 ### `learners().list`
 
@@ -765,9 +765,9 @@ CompletableFuture<Page<Learner>> listAsync(LearnerListParams params, RequestOpti
 | Scopes | `learners:read` |
 | Params | `LearnerListParams`, optional |
 | Returns | `Page<Learner>` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
-| Notes | One page of up to 100 items; `autoPagingIterable()` and `autoPagingStream()` fetch the rest. |
+| Notes | One page of up to 100 items. `autoPagingIterable()` and `autoPagingStream()` fetch later pages on demand. |
 
 ### `learners().offboard`
 
@@ -792,9 +792,9 @@ CompletableFuture<Learner> offboardAsync(String learnerId, LearnerOffboardParams
 | Scopes | `learners:write` |
 | Params | `LearnerOffboardParams`, optional |
 | Returns | `Learner` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
-| Notes | Takes an optional `ifMatch`: the ETag, or the object you read. |
+| Notes | Accepts an optional `ifMatch`, given an ETag or the object you read. |
 
 ### `learners().remind`
 
@@ -819,7 +819,7 @@ CompletableFuture<LearnerRemindAccepted> remindAsync(String learnerId, LearnerRe
 | Scopes | `learners:write` |
 | Params | `LearnerRemindParams`, optional |
 | Returns | `LearnerRemindAccepted` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
 
 ### `learners().retrieve`
@@ -845,7 +845,7 @@ CompletableFuture<Learner> retrieveAsync(String learnerId, LearnerRetrieveParams
 | Scopes | `learners:read` |
 | Params | `LearnerRetrieveParams`, optional |
 | Returns | `Learner` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 
 ### `learners().update`
@@ -867,9 +867,9 @@ CompletableFuture<Learner> updateAsync(String learnerId, LearnerUpdateParams par
 | Scopes | `learners:write` |
 | Params | `LearnerUpdateParams`, required |
 | Returns | `Learner` |
-| Retries | Never retried: replaying it isn't safe |
+| Retries | No; a replay could repeat a change |
 | Idempotency | None |
-| Notes | `ifMatch` is required: the ETag, or the object you read. `build()` throws without it, and a stale ETag throws `PreconditionFailedException`. A merge patch: fields you don't set are left alone, and `clearX()` sends `null`. |
+| Notes | Requires `ifMatch`, given an ETag or the object you read; `build()` throws `IllegalStateException` without it. A stale ETag fails with `PreconditionFailedException`. Sends an RFC 7396 merge patch: unset fields stay unchanged, and `clearX()` sends `null`. |
 
 ### `learners().upsertByExternalId`
 
@@ -890,7 +890,7 @@ CompletableFuture<LearnerWriteResult> upsertByExternalIdAsync(String externalId,
 | Scopes | `learners:write` |
 | Params | `LearnerUpsertByExternalIdParams`, required |
 | Returns | `LearnerWriteResult` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
 
 ## `members()`
@@ -918,9 +918,9 @@ CompletableFuture<Page<MemberListItem>> listAsync(MemberListParams params, Reque
 | Scopes | `members:read` |
 | Params | `MemberListParams`, optional |
 | Returns | `Page<MemberListItem>` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
-| Notes | One page of up to 1000 items; `autoPagingIterable()` and `autoPagingStream()` fetch the rest. |
+| Notes | One page of up to 1000 items. `autoPagingIterable()` and `autoPagingStream()` fetch later pages on demand. |
 
 ### `members().retrieve`
 
@@ -941,7 +941,7 @@ CompletableFuture<Member> retrieveAsync(String subjectId, RequestOptions options
 | Scopes | `members:read` |
 | Params | None |
 | Returns | `Member` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 
 ## `operations()`
@@ -965,9 +965,9 @@ CompletableFuture<Operation> retrieveAsync(String operationId, RequestOptions op
 | Scopes | Any Access token |
 | Params | None |
 | Returns | `Operation` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
-| Notes | Returns an Operation: `waitForCompletion()` polls until it is done. |
+| Notes | Returns an `Operation`; `waitForCompletion()` or `waitForCompletionAsync()` polls until it is done. |
 
 ## `seats()`
 
@@ -990,7 +990,7 @@ CompletableFuture<SeatsInventory> retrieveAsync(RequestOptions options)
 | Scopes | `enrollments:read` |
 | Params | None |
 | Returns | `SeatsInventory` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 
 ## `webhookSubscriptions()`
@@ -1014,7 +1014,7 @@ CompletableFuture<WebhookSubscriptionCreated> createAsync(WebhookSubscriptionCre
 | Scopes | `org:admin` or `webhooks:manage` |
 | Params | `WebhookSubscriptionCreateParams`, required |
 | Returns | `WebhookSubscriptionCreated` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
 
 ### `webhookSubscriptions().delete`
@@ -1036,7 +1036,7 @@ CompletableFuture<EmptyResponse> deleteAsync(String subscriptionId, RequestOptio
 | Scopes | `org:admin` or `webhooks:manage` |
 | Params | None |
 | Returns | `EmptyResponse` |
-| Retries | Never retried: replaying it isn't safe |
+| Retries | No; a replay could repeat a change |
 | Idempotency | None |
 
 ### `webhookSubscriptions().list`
@@ -1062,9 +1062,9 @@ CompletableFuture<Page<WebhookSubscription>> listAsync(WebhookSubscriptionListPa
 | Scopes | `org:admin` or `webhooks:manage` |
 | Params | `WebhookSubscriptionListParams`, optional |
 | Returns | `Page<WebhookSubscription>` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
-| Notes | One page of up to 100 items; `autoPagingIterable()` and `autoPagingStream()` fetch the rest. |
+| Notes | One page of up to 100 items. `autoPagingIterable()` and `autoPagingStream()` fetch later pages on demand. |
 
 ### `webhookSubscriptions().redrive`
 
@@ -1085,9 +1085,9 @@ CompletableFuture<WebhookDeliveryOperation> redriveAsync(String subscriptionId, 
 | Scopes | `org:admin` or `webhooks:manage` |
 | Params | None |
 | Returns | `WebhookDeliveryOperation` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
-| Notes | Returns an Operation: `waitForCompletion()` polls until it is done. |
+| Notes | Returns an `Operation`; `waitForCompletion()` or `waitForCompletionAsync()` polls until it is done. |
 
 ### `webhookSubscriptions().retrieve`
 
@@ -1116,7 +1116,7 @@ CompletableFuture<Optional<WebhookSubscription>> retrieveIfModifiedAsync(String 
 | Scopes | `org:admin` or `webhooks:manage` |
 | Params | None |
 | Returns | `WebhookSubscription` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | None |
 | Notes | `retrieveIfModified` sends `If-None-Match` and returns an empty `Optional` when your copy is still current (304). |
 
@@ -1139,9 +1139,9 @@ CompletableFuture<WebhookDeliveryOperation> testAsync(String subscriptionId, Req
 | Scopes | `org:admin` or `webhooks:manage` |
 | Params | None |
 | Returns | `WebhookDeliveryOperation` |
-| Retries | Retried on network errors, 409 `conflict`, 429 and 5xx |
+| Retries | Yes, after network failures, 409 `conflict`, 429 and 5xx |
 | Idempotency | Sends a generated `Idempotency-Key`, the same on every retry; set `idempotencyKey` in `RequestOptions` to choose your own |
-| Notes | Returns an Operation: `waitForCompletion()` polls until it is done. |
+| Notes | Returns an `Operation`; `waitForCompletion()` or `waitForCompletionAsync()` polls until it is done. |
 
 ### `webhookSubscriptions().update`
 
@@ -1162,6 +1162,6 @@ CompletableFuture<WebhookSubscription> updateAsync(String subscriptionId, Webhoo
 | Scopes | `org:admin` or `webhooks:manage` |
 | Params | `WebhookSubscriptionUpdateParams`, required |
 | Returns | `WebhookSubscription` |
-| Retries | Never retried: replaying it isn't safe |
+| Retries | No; a replay could repeat a change |
 | Idempotency | None |
-| Notes | `ifMatch` is required: the ETag, or the object you read. `build()` throws without it, and a stale ETag throws `PreconditionFailedException`. A merge patch: fields you don't set are left alone, and `clearX()` sends `null`. |
+| Notes | Requires `ifMatch`, given an ETag or the object you read; `build()` throws `IllegalStateException` without it. A stale ETag fails with `PreconditionFailedException`. Sends an RFC 7396 merge patch: unset fields stay unchanged, and `clearX()` sends `null`. |

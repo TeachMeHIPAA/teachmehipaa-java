@@ -4,15 +4,22 @@ Samples use a `client` built as in [Getting started](getting-started.md).
 
 ## Operations
 
-Some work finishes after the request that started it returns: exports,
-imports, bulk changes, Test deliveries and redrives. Those methods return an
-**Operation**. Its `isDone()` says whether it has finished; once it has,
-`getResponse()` holds the result, or `getError()` holds the problem.
+Exports, imports, bulk changes, Test deliveries and redrives can finish after
+the request that started them. Their methods return an `Operation`:
 
-`waitForCompletion()` polls until the Operation is done and returns its final
-state. An Operation that is already done, as exports always are, returns
-without a request. An export's `getExportResult()` then hands back the CSV
-file:
+| Method | Returns |
+| --- | --- |
+| `getName()` | `organizations/{orgId}/operations/{operationId}` |
+| `isDone()` | Whether the work has finished |
+| `getResponse()` | The result as a `JsonNode`, once done without error |
+| `getError()` | The `Problem`, once done with an error |
+| `getMetadata()` | Progress details, keyed by name |
+| `waitForCompletion()` | Polls until done; returns the final state |
+| `waitForCompletionAsync()` | The same, without blocking; see [Async](async.md#operations) |
+
+An Operation that is already done, as every export is, returns from
+`waitForCompletion()` without a request. `getExportResult()` then decodes the
+CSV:
 
 <!-- sample: operations -->
 ```java
@@ -35,23 +42,25 @@ ExportResult result =
 System.out.println(result.filename() + " " + result.rowCount() + " " + result.csv().length());
 ```
 
-| Call                                      | Waits                                                                |
-| ----------------------------------------- | -------------------------------------------------------------------- |
-| `waitForCompletion()`                     | Up to 5 minutes, 1 s before the first poll, backing off up to 10 s   |
-| `waitForCompletion(timeout, interval)`    | Up to `timeout`, `interval` before the first poll, backing off to 10 s |
+| Overload | Waits |
+| --- | --- |
+| `waitForCompletion()` | Up to `Operation.DEFAULT_WAIT_TIMEOUT` (5 min); first poll after `DEFAULT_POLL_INTERVAL` (1 s), backing off to 10 s |
+| `waitForCompletion(Duration timeout, Duration interval)` | Up to `timeout`; first poll after `interval`, backing off to 10 s, never closer than `interval` |
 
-An Operation that finished with an error throws `OperationFailedException`,
-which carries the problem's `getCode()` and `getDetail()` like any API error.
-One still running at the timeout throws `OperationTimeoutException`. Both
-carry the Operation in `getOperation()`, so you can wait on it again. An
-interrupted thread stops waiting with `OperationInterruptedException` and
-keeps its interrupt flag.
+The last poll lands on the deadline. Outcomes other than success throw:
 
-## Resume waiting on an Operation
+| Exception | Cause | `getOperation()` |
+| --- | --- | --- |
+| `OperationFailedException` | The Operation finished with an error; `getCode()` and `getDetail()` come from its problem | The failed Operation |
+| `OperationTimeoutException` | Still running at the deadline | The last state polled; wait on it again |
+| `OperationInterruptedException` | The waiting thread was interrupted; the interrupt flag stays set | The last state polled |
 
-An Operation's `getName()` identifies it. Save it, and later fetch the
-Operation with `operations().retrieve`, such as from another process.
-`Operation.operationIdFromName` turns the name into the id that method takes:
+## Resuming an Operation
+
+`getName()` identifies an Operation across processes. Persist it, and later
+fetch the Operation through `operations().retrieve`.
+`Operation.operationIdFromName` extracts the id that method takes; `database`
+stands for your storage:
 
 <!-- sample: operations-resume -->
 ```java
@@ -74,25 +83,24 @@ Operation operation =
 System.out.println(operation.waitForCompletion().getExportResult().rowCount());
 ```
 
-Here `database` stands in for your own storage.
-
 ## CSV exports
 
-`learners().export`, `enrollments().export` and `certificates().export` each
-start an export Operation. The finished CSV follows RFC 4180, with CRLF line
-endings and a header row; `getExportResult()` decodes it to a string, with a
-suggested `filename()` (or `null`) and the `rowCount()` (data rows, not
-counting the header). It throws `IllegalStateException` if you call it before
-the Operation is done, so always wait first.
+`learners().export`, `enrollments().export` and `certificates().export` start
+an export Operation. The file is RFC 4180 CSV with CRLF line endings and a
+header row. `getExportResult()` returns an `ExportResult` with the decoded
+`csv()`, a suggested `filename()` (may be `null`) and `rowCount()`, the number
+of data rows. Calling it before the Operation is done throws
+`IllegalStateException`.
 
-The [certificate export example](../../examples/ExportCertificates.java)
-writes the file to disk.
+[`ExportCertificates.java`](../../examples/ExportCertificates.java) writes the
+file to disk.
 
 ## CSV imports
 
-`enrollments().importEnrollments` invites everyone in a CSV file with an
-`email` column, and optional `name` and `courseId` columns, up to 500 rows.
-`enrollments().previewImport` checks the same file first and reports, row by
+`enrollments().importEnrollments` invites everyone in a CSV with an `email`
+column and optional `name` and `courseId` columns, up to 500 rows. The method
+is not named `import` because `import` is a reserved word in Java.
+`enrollments().previewImport` validates the same file and reports, row by
 row, what an import would do, without inviting anyone:
 
 <!-- sample: csv-import -->
@@ -128,17 +136,18 @@ void importRoster(Path roster) {
 }
 ```
 
-The method is `importEnrollments`, since `import` is a Java keyword.
-`FileUpload` takes a `Path`, bytes with a filename, or an `InputStream` with a
-filename. Each call reads it once, so a retry resends exactly the same bytes.
+`FileUpload` wraps a `Path`, a `byte[]` with a filename, or an `InputStream`
+with a filename. A `Path` is read each time a call sends it; a stream is read
+once, when you create the `FileUpload`. Either way, every retry of a call
+sends the same bytes.
 
 ## Certificate PDFs
 
-`certificates().downloadPdf` returns the whole PDF as a `BinaryResponse`, with
-its `data()`, `contentType()` and `filename()` (or `null`). For large files,
-or to pass the file straight through, `downloadPdfStream` returns a
-`BinaryStreamResponse` to read as it arrives. Close the stream, ideally with
-try-with-resources, to release the connection:
+`certificates().downloadPdf` buffers the PDF into a `BinaryResponse` with
+`data()`, `contentType()` and `filename()` (may be `null`).
+`downloadPdfStream` returns a `BinaryStreamResponse` instead, whose
+`inputStream()` delivers bytes as they arrive. It implements `AutoCloseable`
+and holds the connection until closed, so use try-with-resources:
 
 <!-- sample: pdf-download -->
 ```java
@@ -159,21 +168,20 @@ void saveCertificate(Path directory) throws IOException {
 }
 ```
 
-With `downloadPdfStream`, retries and the `timeout` cover only getting the
-response started; a failure while you read the stream surfaces from the
-stream as an `IOException`. Revoked and expired Certificates come back
-watermarked.
+Retries and the `timeout` cover the streamed download only until the response
+headers arrive. A failure while you read surfaces as an `IOException` from the
+stream. Revoked and expired Certificates are returned watermarked.
 
 ## Bulk changes
 
-Three methods act on many records in one request, and each record succeeds or
+Three methods change many records in one request; each record succeeds or
 fails on its own:
 
-| Method                        | Acts on                                   | Returns                     |
-| ----------------------------- | ----------------------------------------- | --------------------------- |
-| `learners().batchUpsert`      | Up to 500 Learners, each created or found | An Operation                |
-| `enrollments().batch`         | Up to 500 Enrollments, by id              | The result of each, at once |
-| `enrollments().batchByFilter` | Up to 500 Enrollments matching a filter   | An Operation                |
+| Method | Selects | Returns |
+| --- | --- | --- |
+| `learners().batchUpsert` | Up to 500 Learners, each created or matched | `Operation` |
+| `enrollments().batch` | Up to 500 Enrollments by id | `EnrollmentsBatchResults`, immediately |
+| `enrollments().batchByFilter` | Up to 500 Enrollments matching a filter | `Operation` |
 
 <!-- sample: bulk-changes -->
 ```java
@@ -220,5 +228,5 @@ client
     .waitForCompletion();
 ```
 
-An `enrollments().batch` result's `getOutcome()` is `succeeded`, `skipped` or
-`failed`; a failed one carries its `getProblem()`.
+Each `enrollments().batch` result's `getOutcome()` is `succeeded`, `skipped`
+or `failed`; a failed result carries `getProblem()`.

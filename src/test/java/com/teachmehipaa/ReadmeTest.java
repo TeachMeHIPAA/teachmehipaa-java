@@ -44,7 +44,16 @@ class ReadmeTest extends DocSampleTest {
 
   @Override
   Map<String, Check> checks() {
-    return Map.of("quickstart", this::quickstart);
+    return Map.of("quickstart", this::quickstart, "quickstart-async", this::quickstartAsync);
+  }
+
+  private void quickstartAsync() throws Exception {
+    api.on(TOKEN_ROUTE, Reply.json(tokenJson(ACCESS_TOKEN)))
+        .on(LEARNER_ROUTE, Reply.json(LEARNER_JSON));
+
+    run("quickstart-async");
+
+    assertEquals(List.of("ana@example.com"), printed());
   }
 
   private void quickstart() throws Exception {

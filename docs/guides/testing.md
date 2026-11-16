@@ -1,11 +1,14 @@
 # Testing
 
+Three levels of test fit an integration: unit tests against a fake
+`HttpTransport`, contract tests against a mock server built from the OpenAPI
+document, and end-to-end tests against the Sandbox.
+
 ## Use the Sandbox
 
-The **Sandbox** Environment is a separate TeachMeHIPAA deployment for
-development and tests. Learners there are never emailed, so you can create,
-invite and offboard freely. Create a separate API client for it in the
-console; Live credentials never work in the Sandbox, or the other way round.
+The Sandbox is a separate TeachMeHIPAA deployment with its own API clients.
+It accepts every call Live does and never emails a Learner. Live credentials
+fail in the Sandbox and Sandbox credentials fail in Live.
 
 <!-- sample: testing-sandbox -->
 ```java
@@ -28,16 +31,16 @@ if (!TokenIntrospectionMode.TEST.equals(token.getMode())) {
 System.out.println(token.getMode());
 ```
 
-`auth().introspect()` reports the mode `test` for a Sandbox token, which makes
-a cheap check that a test suite isn't pointed at Live.
+`auth().introspect().getMode()` returns `TEST` for a Sandbox token. Checking
+it in a test fixture stops a misconfigured suite before it touches Live data.
 
 ## Fake the transport in unit tests
 
-The client sends every request, the token request included, through an
-`HttpTransport`: one method that takes the `TransportRequest` the library
-built and returns a `TransportResponse`. Pass your own as `httpTransport` to
-test your code without the network, and to assert on what it sent. This
-JUnit 5 test fakes the Compliance summary:
+Every request the client sends, the token request included, passes through
+one `HttpTransport`. `send` receives a complete `TransportRequest` and
+returns a `TransportResponse`. Because `HttpTransport` is a functional
+interface, a lambda serves as a fake, and the requests it records are what
+your code sent. This JUnit 5 test fakes the Compliance summary:
 
 <!-- sample: testing-fake-transport -->
 ```java
@@ -99,36 +102,32 @@ class ComplianceReportTest {
 }
 ```
 
-Tips for tests:
+Builder settings that make unit tests deterministic:
 
-- A **`StaticTokenProvider`**, as above, keeps token requests out of your
-  fakes.
-- Pass **`organizationId`** so the client doesn't introspect the token to find
-  the Organization.
-- Set **`maxRetries(0)`** to see a scripted failure at once, instead of after
-  the client's retries and backoff.
-- A **`clock`** (a `java.time.Clock`) and a **`sleeper`** replace real time.
-  A `Sleeper` that returns at once makes retry backoff and
-  `waitForCompletion` polling instant. The [async calls](async.md) wait on an
-  **`asyncSleeper`** instead: an `AsyncSleeper` that returns
-  `CompletableFuture.completedFuture(null)` does the same for them.
-- The transport returns error statuses as responses; throw an `IOException`
-  only to simulate a network failure, which the client raises as
-  `ApiConnectionException`.
-- `TransportRequest` headers are keyed by lower-case name, and `body()` is
-  the exact bytes sent, or `null`.
+| Setting | Effect |
+| --- | --- |
+| `tokenProvider(new StaticTokenProvider("test-token"))` | No token requests reach the fake |
+| `organizationId("org_test")` | No Organization lookup reaches the fake |
+| `maxRetries(0)` | A scripted failure surfaces on the first attempt |
+| `clock(Clock)` | Fixes token expiry and Operation deadlines |
+| `sleeper(Sleeper)` | A `Sleeper` that returns at once makes blocking backoff and `waitForCompletion` instant |
+| `asyncSleeper(AsyncSleeper)` | `duration -> CompletableFuture.completedFuture(null)` does the same for [async calls](async.md) |
 
-The transport also suits a proxy or mTLS: wrap a configured `HttpClient` in a
-`JdkHttpTransport` (see [Configuration](configuration.md#custom-http-client)).
+The fake returns 4xx and 5xx as ordinary responses; the client maps them to
+exceptions. Throw `IOException` only to simulate a network failure, which the
+client raises as `ApiConnectionException`. `TransportRequest.headers()` is
+keyed by lower-case name, and `body()` holds the exact bytes sent, or `null`.
+
+A fake that implements only `send` also serves the `…Async` methods: the
+default `sendAsync` runs it on a library thread.
 
 ## Run against a mock server
 
-To check your requests against the Developer API's OpenAPI document, point
-the client at a mock server, such as
-[Prism](https://stoplight.io/open-source/prism), with `baseUrl`. Mock servers
-usually can't issue Access tokens, so give the client a static token and its
-Organization. Prism serves the document's paths without the `/v1` prefix, so
-the base URL is the bare host:
+To validate requests against the Developer API's OpenAPI document, point the
+client at a mock server such as [Prism](https://stoplight.io/open-source/prism)
+with `baseUrl`. Mock servers cannot mint Access tokens, so supply a static
+token and the Organization. Prism serves the document's paths without the
+`/v1` prefix, so the base URL is the bare origin:
 
 <!-- sample: testing-mock-server -->
 ```java
@@ -149,12 +148,16 @@ Page<Learner> page = client.learners().list(LearnerListParams.builder().limit(5)
 System.out.println(page.items().size());
 ```
 
+This repository runs its own contract suite this way: `./gradlew contractTest`
+starts Prism through `npx` and fails on any request that violates the
+document.
+
 ## Test your webhook handler
 
-`Webhook.generateTestHeaders` signs a payload the way TeachMeHIPAA does. Use
-it to send your handler a Delivery it should accept, and tampered ones it
-should refuse. Here `TmhWebhook.handle` stands in for your handler, such as
-one from [Webhooks](webhooks.md#verify-every-delivery):
+`Webhook.generateTestHeaders` signs a payload as TeachMeHIPAA would. A test
+sends the handler a correctly signed Delivery, then tampered ones it must
+refuse. `TmhWebhookTest.handle` stands for your handler, such as one from
+[Webhooks](webhooks.md#verifying-a-delivery):
 
 <!-- sample: testing-webhook-handler -->
 ```java
@@ -194,7 +197,7 @@ class TmhWebhookTest {
 }
 ```
 
-Sign exactly the body and path you send: a different path, or a body that
-differs by one byte, fails verification just as it would in production. Pass
-`Webhook.TestHeaderOptions` with a `timestamp` to sign as of another time,
-such as to test that your handler rejects stale Deliveries.
+Sign the exact body and path the test sends; one changed byte or a different
+path fails verification as it would in production. Pass
+`Webhook.TestHeaderOptions` with a `timestamp` to sign as of another instant
+and check that your handler rejects stale Deliveries.

@@ -25,6 +25,10 @@ Generated from the Developer API document release `trimmed-2026-11-15`.
   and cancelling stops retries and polls. `Page.nextPageAsync()` and
   `Operation.waitForCompletionAsync()` round it out
   ([#2](https://github.com/TeachMeHIPAA/teachmehipaa-java/issues/2)).
+- `docs/reference/code-samples.json`, generated: one compiled and
+  fake-API-tested Java snippet per Developer API operation, for the
+  TeachMeHIPAA API reference. The README and guides are rewritten as a Java
+  reference (new: Installation, The client, Compatibility).
 - Client credentials authentication with cached, single-flight Access tokens
   renewed 60 s before expiry, and one renewal and replay on a 401.
 - Live and Sandbox Environments, a `baseUrl` override, narrower `scopes`, and

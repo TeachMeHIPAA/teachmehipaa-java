@@ -1,24 +1,28 @@
-# TeachMeHIPAA Java Library
+# teachmehipaa-java
 
-The official Java library for the TeachMeHIPAA Developer API.
+Java client library for the TeachMeHIPAA Developer API: enroll your workforce
+in HIPAA training, track Certificates and compliance, and receive signed
+webhook Events from your own JVM services.
 
 [![CI](https://github.com/TeachMeHIPAA/teachmehipaa-java/actions/workflows/ci.yml/badge.svg)](https://github.com/TeachMeHIPAA/teachmehipaa-java/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> [!IMPORTANT]
-> **Status: pre-release.** The TeachMeHIPAA Developer API isn't generally
-> available yet, and this library isn't published to Maven Central. Until it
-> is, build it from source and install it into your local Maven repository,
-> as shown below. Names and behavior may still change before 1.0.
+| Requirement | Value |
+| --- | --- |
+| Java | 17 or later (compiled with `--release 17`; CI runs 17 and 21) |
+| Runtime dependencies | Jackson 2.22 (`jackson-databind`, `jackson-annotations`, `jackson-datatype-jsr310`) |
+| HTTP | The JDK's `java.net.http.HttpClient`; no other HTTP library |
+| Coordinates | `com.teachmehipaa:teachmehipaa-java:0.1.0-SNAPSHOT` |
 
-Enroll your people in HIPAA training and track their compliance from your own
-systems. The library handles Access tokens, the Organization binding,
-retries, idempotency keys, typed exceptions, pagination, ETags, Operations and
-webhook verification, so your code only calls methods.
+> [!IMPORTANT]
+> **Pre-release.** The Developer API is not generally available, and no
+> artifact is published to Maven Central. Until 1.0.0, install the library
+> from this repository into your local Maven repository (below). Class and
+> method names can change between snapshots.
 
 ## Installation
 
-Build the library from a checkout and install it into `~/.m2`:
+Build from source and install into `~/.m2`:
 
 ```sh
 git clone https://github.com/TeachMeHIPAA/teachmehipaa-java.git
@@ -26,8 +30,23 @@ cd teachmehipaa-java
 ./gradlew publishToMavenLocal
 ```
 
-Then depend on it from your project, with `mavenLocal()` among your
-repositories. Gradle (Kotlin DSL):
+Then declare the dependency:
+
+<table>
+<tr><th>Maven (<code>pom.xml</code>)</th><th>Gradle (<code>build.gradle.kts</code>)</th></tr>
+<tr>
+<td>
+
+```xml
+<dependency>
+  <groupId>com.teachmehipaa</groupId>
+  <artifactId>teachmehipaa-java</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+</dependency>
+```
+
+</td>
+<td>
 
 ```kotlin
 repositories {
@@ -40,24 +59,19 @@ dependencies {
 }
 ```
 
-Maven:
+</td>
+</tr>
+</table>
 
-```xml
-<dependency>
-  <groupId>com.teachmehipaa</groupId>
-  <artifactId>teachmehipaa-java</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
-</dependency>
-```
-
-The library needs Java 17 or newer and depends only on Jackson. It sends
-requests with the JDK's own `java.net.http.HttpClient`.
+Maven reads `~/.m2` without extra configuration. Gradle needs `mavenLocal()`.
+[Installation](docs/guides/installation.md) covers Gradle's Groovy DSL, the
+transitive Jackson dependency and version alignment.
 
 ## Quickstart
 
-Create an API client in the TeachMeHIPAA console to get a client id (`cli_…`)
-and secret (`tmh_cs_…`). Start in the Sandbox Environment, where no real
-Learners are emailed.
+An Organization admin creates an API client in the TeachMeHIPAA console. It
+has a client id (`cli_…`) and a client secret (`tmh_cs_…`). Use Sandbox
+credentials while you build: the Sandbox never emails a Learner.
 
 <!-- sample: quickstart -->
 ```java
@@ -84,45 +98,72 @@ for (Learner item : client.learners().list(inProgress).autoPagingIterable()) {
 }
 ```
 
-Build one client and share it: it is thread-safe, gets and renews Access
-tokens itself, and retries failures that are safe to retry. Services hang off
-it (`client.learners()`, `client.enrollments()`); methods take ids first, then
-a `…Params` object built with a builder, then optional `RequestOptions`.
-Exceptions are unchecked. [Getting started](docs/guides/getting-started.md)
-walks through your first integration.
+Every method that sends a request also has an `…Async` form that returns a
+`CompletableFuture` without blocking the calling thread:
+
+<!-- sample: quickstart-async -->
+```java
+client
+    .learners()
+    .retrieveAsync("sub_01JD8Z4N3QX5V7W9Y2B4C6D8EG")
+    .thenAccept(found -> System.out.println(found.getEmail()))
+    .join();
+```
+
+## Design at a glance
+
+| Concern | Behavior |
+| --- | --- |
+| Construction | `TeachMeHipaaClient.builder()`; every setting is fixed at `build()` |
+| Thread safety | One client serves any number of threads. Builders are not thread-safe. |
+| Lifecycle | The client is not `AutoCloseable` and holds nothing to close. `BinaryStreamResponse` is, so read a streamed PDF in try-with-resources. |
+| Method shape | Path ids, then a `…Params` object from its builder, then optional `RequestOptions` |
+| Exceptions | All unchecked: `TeachMeHipaaException` and its subclasses, by HTTP status |
+| Retries | Network failures, 409 `conflict`, 429 and 5xx; twice by default, 0.5 s doubling to 5 s, `Retry-After` honored up to 60 s |
+| Timeouts | 80 s per attempt by default |
+| Async | `…Async` siblings return `CompletableFuture<T>` of the blocking method's `T` |
+| Logging | Off unless you pass a `RequestLogger`; never logs bodies, headers or credentials |
 
 ## Documentation
 
-| Topic                                                                | What it covers                                                                   |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| [Getting started](docs/guides/getting-started.md)                    | Install, credentials, first calls, inviting a Learner                            |
-| [Authentication](docs/guides/authentication.md)                      | Client credentials, Scopes, Environments, the Organization binding, public calls |
-| [Errors and retries](docs/guides/errors-and-retries.md)              | Exceptions, `getCode()`, request ids, retries, idempotency, request options      |
-| [Pagination and the Event log](docs/guides/pagination-and-events.md) | Auto-paging, the Event log, tailing it                                           |
-| [Webhooks](docs/guides/webhooks.md)                                  | Webhook subscriptions, verifying Deliveries, Test deliveries                     |
-| [Operations and files](docs/guides/operations-and-files.md)          | Waiting on Operations, CSV exports and imports, Certificate PDFs, bulk changes   |
-| [Conditional requests](docs/guides/conditional-requests.md)          | ETags, `ifMatch`, `retrieveIfModified`, merge-patch updates                      |
-| [Testing](docs/guides/testing.md)                                    | The Sandbox, faking the transport, signing test Deliveries                       |
-| [Configuration](docs/guides/configuration.md)                        | Every builder option, logging, timeouts, a custom HTTP client                    |
-| [Versioning](docs/guides/versioning.md)                              | Semantic versioning, `OPENAPI_VERSION`, additive API changes                     |
+The guides are written for engineers wiring the API into a JVM service. Every
+Java block in them compiles against the library and runs against a fake of
+the API in CI.
 
-- [Resource reference](docs/reference/resources.md): every service and
-  method, with its overloads, HTTP route, Scopes and return type.
+| Guide | Covers |
+| --- | --- |
+| [Installation](docs/guides/installation.md) | Maven and Gradle, the Jackson dependency, building from source |
+| [Getting started](docs/guides/getting-started.md) | Credentials, a first call, inviting a Learner, a first `catch` |
+| [The client](docs/guides/client.md) | Builder options, lifecycle, thread safety, per-call options, logging, a custom `HttpClient` |
+| [Authentication](docs/guides/authentication.md) | Client credentials, Scopes, Environments, the Organization binding, token providers |
+| [Exceptions and retries](docs/guides/exceptions.md) | The exception hierarchy, problem details, retry rules, idempotency keys |
+| [Async with CompletableFuture](docs/guides/async.md) | The `…Async` methods, their threads, failures, cancellation, pages and Operations |
+| [Pagination and the Event log](docs/guides/pagination.md) | `Page`, auto-paging iterables and streams, reading and tailing Events |
+| [Webhooks](docs/guides/webhooks.md) | Subscriptions, signature verification in Spring, servlets and the JDK server |
+| [Operations and files](docs/guides/operations-and-files.md) | Long-running Operations, CSV export and import, PDFs, bulk changes |
+| [Optimistic concurrency](docs/guides/optimistic-concurrency.md) | ETags, `If-Match`, merge patches, `retrieveIfModified` |
+| [Testing](docs/guides/testing.md) | The Sandbox, a fake `HttpTransport`, mock servers, webhook handler tests |
+| [Compatibility](docs/guides/compatibility.md) | Semantic versioning, supported JDKs, open enums and forward-compatible models |
+
+Reference material:
+
+- [Resource reference](docs/reference/resources.md): every service method and
+  overload, its HTTP route, Scopes and retry behavior. Generated.
 - [Javadoc](https://teachmehipaa.github.io/teachmehipaa-java/): every public
-  class and method.
-- [Examples](examples/README.md): small programs to run against the Sandbox.
-- [All documentation](docs/README.md), including the design records.
+  type.
+- [Examples](examples/README.md): runnable programs for the Sandbox.
+- [Documentation index](docs/README.md), with the design records.
 
 ## Support and security
 
 <!-- TODO(Nick): confirm the support address before launch. -->
 
-For help, contact TeachMeHIPAA support and quote the request id from the
-exception (`getRequestId()`) or from `getLastResponse().requestId()`. To
-report a vulnerability, see [SECURITY.md](SECURITY.md); please don't open a
-public issue.
+Quote the request id when you contact TeachMeHIPAA support. An exception
+carries it in `getRequestId()`; a returned object in
+`getLastResponse().requestId()`. Report vulnerabilities privately, as
+[SECURITY.md](SECURITY.md) describes.
 
-The library sends no telemetry and never logs request or response bodies. See
-the [changelog](CHANGELOG.md) for what changed, and
-[CONTRIBUTING.md](CONTRIBUTING.md) to work on the library. It is released
-under the [MIT License](LICENSE).
+The library sends no telemetry and writes nothing to disk. Changes are
+recorded in the [changelog](CHANGELOG.md);
+[CONTRIBUTING.md](CONTRIBUTING.md) explains how to build and test it.
+Licensed under the [MIT License](LICENSE).

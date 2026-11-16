@@ -64,11 +64,11 @@ class GuidesTest extends DocSampleTest {
         Map.entry("organization", this::organization),
         Map.entry("auth-static-token", this::authStaticToken),
         Map.entry("public-lookups", this::publicLookups),
-        // errors-and-retries.md
+        // exceptions.md
         Map.entry("errors", this::errors),
         Map.entry("errors-code", this::errorsCode),
         Map.entry("request-options", this::requestOptions),
-        // pagination-and-events.md
+        // pagination.md
         Map.entry("pagination", this::pagination),
         Map.entry("pagination-pages", this::paginationPages),
         Map.entry("events-list", this::eventsList),
@@ -88,7 +88,7 @@ class GuidesTest extends DocSampleTest {
         Map.entry("csv-import", this::csvImport),
         Map.entry("pdf-download", this::pdfDownload),
         Map.entry("bulk-changes", this::bulkChanges),
-        // conditional-requests.md
+        // optimistic-concurrency.md
         Map.entry("conditional-write", this::conditionalWrite),
         Map.entry("conditional-update-subscription", this::conditionalUpdateSubscription),
         Map.entry("not-modified", this::notModified),
@@ -97,12 +97,12 @@ class GuidesTest extends DocSampleTest {
         Map.entry("testing-fake-transport", this::testingFakeTransport),
         Map.entry("testing-mock-server", this::testingMockServer),
         Map.entry("testing-webhook-handler", this::testingWebhookHandler),
-        // configuration.md
+        // client.md
         Map.entry("configuration", this::configuration),
         Map.entry("configuration-per-call", this::configurationPerCall),
         Map.entry("configuration-http-client", this::configurationHttpClient),
         Map.entry("logging", this::logging),
-        // versioning.md
+        // compatibility.md
         Map.entry("versioning-open-enums", this::versioningOpenEnums),
         // async.md
         Map.entry("async-retrieve", this::asyncRetrieve),
@@ -238,7 +238,7 @@ class GuidesTest extends DocSampleTest {
             .noneMatch(request -> request.headers().containsKey("authorization")));
   }
 
-  // errors-and-retries.md
+  // exceptions.md
 
   private void errors() throws Exception {
     signedIn()
@@ -301,7 +301,7 @@ class GuidesTest extends DocSampleTest {
     assertEquals(List.of(enrollmentId(1) + " req_e1"), printed());
   }
 
-  // pagination-and-events.md
+  // pagination.md
 
   private void pagination() throws Exception {
     signedIn()
@@ -659,7 +659,7 @@ class GuidesTest extends DocSampleTest {
     assertEquals(1, api.requestsTo("GET " + ORG + "/operations/" + OPERATION_ID).size());
   }
 
-  // conditional-requests.md
+  // optimistic-concurrency.md
 
   private void conditionalWrite() throws Exception {
     String patchRoute = "PATCH " + ORG + "/learners/" + LEARNER_ID;
@@ -748,7 +748,7 @@ class GuidesTest extends DocSampleTest {
     call(construct("testing-webhook-handler"), "acceptsASignedDeliveryAndRefusesTamperedOnes");
   }
 
-  // configuration.md
+  // client.md
 
   private void configuration() throws Exception {
     run("configuration");
@@ -787,7 +787,7 @@ class GuidesTest extends DocSampleTest {
         printed().stream().map(line -> line.replaceAll("\\d+ ms", "N ms")).toList());
   }
 
-  // versioning.md
+  // compatibility.md
 
   private void versioningOpenEnums() throws Exception {
     signedIn()
