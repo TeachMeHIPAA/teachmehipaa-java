@@ -97,7 +97,7 @@ Credentials never work across Environments.
 | `environment`                | Base URL                                  |
 | ---------------------------- | ----------------------------------------- |
 | `Environment.LIVE` (default) | `https://api.tme.so/v1`                   |
-| `Environment.SANDBOX`        | `https://api-teachmehipaa-dev.web.app/v1` |
+| `Environment.SANDBOX`        | `https://sandbox.api.tme.so/v1` |
 
 `baseUrl` overrides the Environment's URL, such as to point at a mock server.
 `auth().introspect()` tells you which Environment a token is for: its

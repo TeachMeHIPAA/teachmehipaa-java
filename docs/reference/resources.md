@@ -4,7 +4,7 @@
 
 Every service and method of `TeachMeHipaaClient`: 13 services and 45 API methods, generated from the Developer API release `trimmed-2026-11-15`. For every class, field and builder, see the [Javadoc](https://teachmehipaa.github.io/teachmehipaa-java/); for how the pieces fit together, the [guides](../README.md).
 
-Reach a service from the client, such as `client.learners()`. Each method takes the path ids first, then its `…Params` (built with `builder()`), then [`RequestOptions`](../guides/errors-and-retries.md#request-options); the shorter overloads leave out what is optional. Every returned object has `getLastResponse()`. Paths are relative to the Environment's base URL (Live is `https://api.tme.so/v1`; Sandbox is `https://api-teachmehipaa-dev.web.app/v1`). The client fills in `{orgId}` from its [Organization binding](../guides/authentication.md#the-organization-binding).
+Reach a service from the client, such as `client.learners()`. Each method takes the path ids first, then its `…Params` (built with `builder()`), then [`RequestOptions`](../guides/errors-and-retries.md#request-options); the shorter overloads leave out what is optional. Every returned object has `getLastResponse()`. Paths are relative to the Environment's base URL (Live is `https://api.tme.so/v1`; Sandbox is `https://sandbox.api.tme.so/v1`). The client fills in `{orgId}` from its [Organization binding](../guides/authentication.md#the-organization-binding).
 
 ## Contents
 

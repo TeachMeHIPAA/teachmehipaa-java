@@ -743,7 +743,7 @@ class GuidesTest extends DocSampleTest {
   private void configuration() throws Exception {
     run("configuration");
 
-    assertEquals(List.of("SANDBOX https://api-teachmehipaa-dev.web.app/v1 3"), printed());
+    assertEquals(List.of("SANDBOX https://sandbox.api.tme.so/v1 3"), printed());
     assertEquals(List.of(), api.requests());
   }
 
@@ -761,7 +761,7 @@ class GuidesTest extends DocSampleTest {
   private void configurationHttpClient() throws Exception {
     run("configuration-http-client");
 
-    assertEquals(List.of("https://api-teachmehipaa-dev.web.app/v1"), printed());
+    assertEquals(List.of("https://sandbox.api.tme.so/v1"), printed());
     assertEquals(List.of(), api.requests());
   }
 
