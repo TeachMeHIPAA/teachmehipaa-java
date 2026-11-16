@@ -1,10 +1,21 @@
-# Async calls
+# Async with CompletableFuture
 
-Every client method that sends a request has an `…Async` sibling with the
-same parameters and overloads. It returns a `CompletableFuture` of the type
-the blocking method returns: `retrieveAsync` returns
-`CompletableFuture<Learner>`, `listAsync` returns
-`CompletableFuture<Page<Learner>>`. Samples use a `client` built as in
+Every service method that sends a request has an `…Async` sibling with the
+same parameters and overloads. The sibling returns
+`CompletableFuture<T>`, where `T` is exactly what the blocking method
+returns:
+
+| Blocking | Async |
+| --- | --- |
+| `Learner retrieve(String)` | `CompletableFuture<Learner> retrieveAsync(String)` |
+| `Page<Learner> list(LearnerListParams)` | `CompletableFuture<Page<Learner>> listAsync(LearnerListParams)` |
+| `Optional<Course> retrieveIfModified(String, String)` | `CompletableFuture<Optional<Course>> retrieveIfModifiedAsync(String, String)` |
+| `BinaryStreamResponse downloadPdfStream(String)` | `CompletableFuture<BinaryStreamResponse> downloadPdfStreamAsync(String)` |
+| `Page.nextPage()` | `Page.nextPageAsync()` |
+| `Operation.waitForCompletion()` | `Operation.waitForCompletionAsync()` |
+
+The [resource reference](../reference/resources.md) lists every async
+overload. Samples use a `client` built as in
 [Getting started](getting-started.md).
 
 <!-- sample: async-retrieve -->
@@ -16,32 +27,30 @@ client
     .join();
 ```
 
-The `join()` keeps the sample's thread alive until the line prints. In a
-server, return the future to your framework instead.
+`join()` keeps the sample's thread alive until the line prints. In a Spring
+WebFlux handler or a JAX-RS `@Suspended` resource, return or complete with
+the future instead of joining it.
 
 ## Threads
 
-The default transport sends with `HttpClient.sendAsync`, so no thread waits
-on the network. Retry waits and Operation polls run on
-`CompletableFuture.delayedExecutor`'s timer, so no thread sleeps either.
+The default `JdkHttpTransport` sends with `HttpClient.sendAsync`, so no thread
+waits on the network. Waits between retries and Operation polls run on
+`CompletableFuture.delayedExecutor`'s timer, so no thread sleeps either. The
+client still owns nothing that needs closing.
 
-| Stage                        | Runs on                                                      |
-| ---------------------------- | ------------------------------------------------------------ |
-| The `…Async` call itself     | Your thread, until the request is handed to the transport    |
-| Your callbacks               | The thread that completed the response: the `HttpClient`'s executor, or `ForkJoinPool.commonPool()` after a retry wait |
-| A custom transport's `send`  | A library-owned daemon thread, `teachmehipaa-blocking-io`    |
+| Work | Runs on |
+| --- | --- |
+| The `…Async` call | Your thread, until the request reaches the transport; then the call returns |
+| Your dependent stages (`thenApply`, `thenAccept`, …) | The thread that completed the future: the `HttpClient`'s executor, or `ForkJoinPool.commonPool()` after a retry wait |
+| A custom transport's blocking `send` | A library daemon thread named `teachmehipaa-blocking-io` |
+| A custom `TokenProvider`'s `accessToken()` | The same library daemon threads |
 
-Callbacks that block, such as a JDBC write, belong on your own executor:
-`thenAcceptAsync(callback, executor)`.
+Dependent stages that block, such as a JDBC write, belong on an executor you
+own: `thenAcceptAsync(action, executor)`.
 
-A custom `HttpTransport` needs nothing new. `sendAsync` defaults to running
-your `send` on a library-owned daemon thread; override it if your HTTP client
-has a non-blocking API. A custom `TokenProvider` works the same way through
-`accessTokenAsync`.
+## Concurrent calls
 
-## Several calls at once
-
-Start the calls, then wait for all of them:
+Start the calls first, then combine the futures:
 
 <!-- sample: async-fan-out -->
 ```java
@@ -59,24 +68,25 @@ for (CompletableFuture<Learner> lookup : lookups) {
 }
 ```
 
-Concurrent calls share one Access token mint and one Organization lookup,
-however many start before either finishes.
+Concurrent calls on one client share a single Access token mint and a single
+Organization lookup, however many start before either completes.
 
-## Errors
+## Failures
 
 A failed call completes its future exceptionally with the same
-`TeachMeHipaaException` subclass the blocking method throws, never wrapped.
-How you receive it depends on where you look:
+`TeachMeHipaaException` subclass the blocking method throws. The library
+never wraps it. What your code receives depends on how it observes the
+future:
 
-| Where you look                                   | What you get                              |
-| ------------------------------------------------ | ----------------------------------------- |
-| `exceptionally` or `handle` on the returned future | The exception itself, such as `NotFoundException` |
-| `get()`                                          | `ExecutionException`, with it as the cause |
-| `join()`                                         | `CompletionException`, with it as the cause |
-| A stage after `thenApply` or `thenCompose`       | `CompletionException`, with it as the cause |
+| Observed through | Receives |
+| --- | --- |
+| `exceptionally`, `handle` or `whenComplete` on the returned future | The exception itself, such as `NotFoundException` |
+| `get()` | `ExecutionException`, cause set to the exception |
+| `join()` | `CompletionException`, cause set to the exception |
+| A stage derived with `thenApply`, `thenCompose` and the like | `CompletionException`, cause set to the exception |
 
-The last row is how `CompletableFuture` treats every dependent stage. Attach
-the handler straight to the returned future to match on the type:
+The last row is standard `CompletableFuture` behavior for dependent stages.
+To match on the type, attach the handler to the future the library returned:
 
 <!-- sample: async-errors -->
 ```java
@@ -99,19 +109,20 @@ Learner learner =
 System.out.println(learner == null ? "no such Learner" : learner.getName());
 ```
 
-Arguments are checked before anything is sent: a `null` id throws
-`NullPointerException` from the call itself.
+Arguments are validated before anything is sent: a `null` id throws
+`NullPointerException` from the `…Async` call itself, and a params builder
+missing a required field throws from `build()`.
 
-## Retries, timeouts and cancelling
+## Retries, timeouts and cancellation
 
-An async call retries on the blocking schedule: network errors, 409
-`conflict`, 429 and 5xx, twice by default, waiting 0.5 s doubling to 5 s with
-jitter, or the `Retry-After` the API sends, up to 60 s. `RequestOptions`
-apply as they do to blocking calls.
+Async calls follow the blocking [retry rules](exceptions.md#retries): network
+failures, 409 `conflict`, 429 and 5xx, twice by default, 0.5 s doubling to
+5 s with jitter, or the `Retry-After` the API sends, up to 60 s.
+`RequestOptions` apply unchanged.
 
-Cancelling the future stops the call: the request in flight is cancelled and
-no retry starts. Completing it yourself does the same, so `orTimeout` puts a
-ceiling on a call and all its retries:
+`cancel(true)` on the returned future cancels the request in flight and
+starts no further retry. Completing the future from outside has the same
+effect, so `orTimeout` caps a call together with all its retries:
 
 <!-- sample: async-timeout -->
 ```java
@@ -127,12 +138,14 @@ Learner learner =
 System.out.println(learner.getEmail());
 ```
 
-The client's `timeout` (80 s by default) still bounds each attempt.
+The client's `timeout` (80 s by default) still bounds each attempt. Work that
+other callers share, the token mint and the Organization lookup, keeps running
+when one caller cancels.
 
 ## Pages
 
-`listAsync` returns the first page; `nextPageAsync()` fetches the one after
-it. A recursive method walks them all without blocking:
+`listAsync` completes with the first `Page`. `nextPageAsync()` fetches the
+page after it. A recursive method walks every page without blocking:
 
 <!-- sample: async-pages -->
 ```java
@@ -153,17 +166,17 @@ CompletableFuture<Integer> count(Page<Learner> page, int before) {
 }
 ```
 
-`nextPageAsync()` on the last page throws `NoSuchElementException` before
-sending anything; check `hasNextPage()` first. A page from `list` can fetch
-the next one with `nextPageAsync()`, and a page from `listAsync` with
-`nextPage()`.
+On the last page, `nextPageAsync()` throws `NoSuchElementException`
+immediately, without sending a request. Pages are interchangeable between the
+two styles: a page from `list` offers `nextPageAsync()`, and a page from
+`listAsync` offers `nextPage()`.
 
 ## Operations
 
-`waitForCompletionAsync()` polls an Operation on the same schedule as
-`waitForCompletion()`: up to 5 minutes, 1 s before the first poll, backing off
-to 10 s. It fails with `OperationFailedException` or
-`OperationTimeoutException`, and cancelling it stops the polls.
+`waitForCompletionAsync()` polls on the blocking schedule: up to 5 minutes,
+the first poll after 1 s, backing off to 10 s between polls. The future fails
+with `OperationFailedException` or `OperationTimeoutException`, and
+cancelling it stops the polls.
 
 <!-- sample: async-operation -->
 ```java
@@ -185,16 +198,23 @@ ExportResult csv =
 System.out.println(csv.filename() + " " + csv.rowCount());
 ```
 
-A `WebhookDeliveryOperation` narrows the result to
-`CompletableFuture<WebhookDeliveryOperation>`, so `getDeliveryResult()` needs
-no cast.
+`Operation.waitForCompletionAsync()` is declared to return
+`CompletableFuture<? extends Operation>`, so that
+`WebhookDeliveryOperation` can narrow it to
+`CompletableFuture<WebhookDeliveryOperation>` and `getDeliveryResult()` needs
+no cast. Chain it with `thenCompose` as above, or hold it in a variable of
+type `CompletableFuture<? extends Operation>`.
 
 ## What stays blocking
 
-`events().tail(…)` is an `Iterable`; iterate it on a thread of your own.
-Reading a `BinaryStreamResponse` blocks as any `InputStream` does:
-`downloadPdfStreamAsync` completes once the headers arrive, and the body is
-yours to read.
+- `events().tail(…)` returns an `Iterable`; iterate it on a thread you own.
+- `BinaryStreamResponse.inputStream()` is an ordinary `InputStream`.
+  `downloadPdfStreamAsync` completes when the headers arrive; reading the
+  body blocks like any stream read.
 
-In tests, pass `asyncSleeper` to the builder to record retry and poll waits
-instead of waiting them. See [Testing](testing.md).
+## Testing async code
+
+Pass `asyncSleeper` to the builder to replace the retry and poll timer. An
+`AsyncSleeper` that returns `CompletableFuture.completedFuture(null)` makes
+backoff instant; one that records each `Duration` lets a test assert the
+schedule. See [Testing](testing.md).

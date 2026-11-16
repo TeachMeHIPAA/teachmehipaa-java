@@ -194,7 +194,7 @@ tasks.test {
           "CONTRIBUTING.md",
           "CHANGELOG.md",
           "SECURITY.md",
-          fileTree("docs") { include("**/*.md") },
+          fileTree("docs") { include("**/*.md", "**/*.json") },
           fileTree("examples"),
       )
       .withPropertyName("docs")
