@@ -1,5 +1,7 @@
 package com.teachmehipaa.core;
 
+import java.util.concurrent.CompletableFuture;
+
 /**
  * Sends an Access token you obtained yourself, as is. It is never renewed and never touches the
  * token endpoint: once the token expires or is revoked, calls raise {@code
@@ -15,6 +17,11 @@ public final class StaticTokenProvider implements TokenProvider {
   @Override
   public String accessToken() {
     return accessToken;
+  }
+
+  @Override
+  public CompletableFuture<String> accessTokenAsync() {
+    return CompletableFuture.completedFuture(accessToken);
   }
 
   /** Nothing to drop: this provider can't get another token. */

@@ -20,6 +20,7 @@ import java.util.Objects;
  * @param transport sends every HTTP request
  * @param clock tells the time for token expiry
  * @param sleeper waits between retries
+ * @param asyncSleeper waits between retries and Operation polls of the {@code …Async} methods
  * @param logger receives an entry per response, or {@code null} for no logging
  */
 public record ClientConfig(
@@ -32,6 +33,7 @@ public record ClientConfig(
     HttpTransport transport,
     Clock clock,
     Sleeper sleeper,
+    AsyncSleeper asyncSleeper,
     RequestLogger logger) {
   public ClientConfig {
     Objects.requireNonNull(baseUrl, "baseUrl");
@@ -40,6 +42,7 @@ public record ClientConfig(
     Objects.requireNonNull(transport, "transport");
     Objects.requireNonNull(clock, "clock");
     Objects.requireNonNull(sleeper, "sleeper");
+    Objects.requireNonNull(asyncSleeper, "asyncSleeper");
   }
 
   // ADR-0007: this header is the only thing the library says about its caller.

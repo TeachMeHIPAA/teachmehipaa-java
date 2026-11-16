@@ -69,6 +69,10 @@ final class ReferenceWriter {
             + servers
             + "). The client fills in `{orgId}` from its [Organization"
             + " binding](../guides/authentication.md#the-organization-binding).");
+    blocks.add(
+        "Each method has an `…Async` twin with the same overloads, listed after it, that returns a"
+            + " `CompletableFuture` of the same type without blocking the calling thread. See"
+            + " [Async calls](../guides/async.md).");
     blocks.add("## Contents");
     blocks.add(
         nodes.stream()
@@ -125,13 +129,18 @@ final class ReferenceWriter {
     String returns = ServiceWriter.returns(plan, scratch).type();
 
     List<String> signatures = new ArrayList<>();
+    List<String> asyncSignatures = new ArrayList<>();
     for (List<String> parameters : ServiceWriter.overloads(plan, params, options)) {
       signatures.add(signature(returns, plan.javaName(), parameters));
+      asyncSignatures.add(
+          signature(future(returns), plan.javaName() + ServiceWriter.ASYNC, parameters));
     }
     if (plan.streamName() != null) {
       String stream = ServiceWriter.streamReturns(plan, scratch).type();
       for (List<String> parameters : ServiceWriter.overloads(plan, params, options)) {
         signatures.add(signature(stream, plan.streamName(), parameters));
+        asyncSignatures.add(
+            signature(future(stream), plan.streamName() + ServiceWriter.ASYNC, parameters));
       }
     }
     if (plan.ifModifiedName() != null) {
@@ -147,8 +156,11 @@ final class ReferenceWriter {
         List<String> parameters = new ArrayList<>(head);
         parameters.addAll(tail);
         signatures.add(signature(optional, plan.ifModifiedName(), parameters));
+        asyncSignatures.add(
+            signature(future(optional), plan.ifModifiedName() + ServiceWriter.ASYNC, parameters));
       }
     }
+    signatures.addAll(asyncSignatures);
 
     List<List<String>> rows = new ArrayList<>();
     rows.add(List.of("HTTP", code(method.httpMethod() + " " + plan.pathTemplate())));
@@ -238,6 +250,10 @@ final class ReferenceWriter {
       case "optional" -> "Sends an `Idempotency-Key` only when you set one in `RequestOptions`";
       default -> "None";
     };
+  }
+
+  private static String future(String type) {
+    return "CompletableFuture<" + type + ">";
   }
 
   private static String signature(String returns, String name, List<String> parameters) {

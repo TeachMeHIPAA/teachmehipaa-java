@@ -43,6 +43,7 @@ System.out.println(client.getEnvironment() + " " + client.getBaseUrl() + " " + c
 | `httpTransport`      | A `JdkHttpTransport`                      | Sends requests: wrap a configured `HttpClient` (proxy, mTLS) or plug in a test fake |
 | `logger`             | None: nothing is logged                   | A `RequestLogger` that receives one entry per request (see [Logging](#logging))     |
 | `clock`, `sleeper`   | The system clock, `Thread.sleep`          | Supply the time and the waits between retries and polls, for tests                  |
+| `asyncSleeper`       | A timer that holds no thread              | Supplies the waits of the [async calls](async.md), for tests                         |
 
 Give `clientId` and `clientSecret`, or a `tokenProvider`, or neither for a
 client that can only make

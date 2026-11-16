@@ -22,6 +22,7 @@ import com.teachmehipaa.param.LearnerRetrieveParams;
 import com.teachmehipaa.param.LearnerUpdateParams;
 import com.teachmehipaa.param.LearnerUpsertByExternalIdParams;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 /** Learners in the client's Organization. Reach it through {@code client.learners()}. */
 public final class LearnerService {
@@ -61,6 +62,37 @@ public final class LearnerService {
     return requester.request(request, Operation.class, options);
   }
 
+  /** Create many learners. */
+  public CompletableFuture<Operation> batchUpsertAsync(LearnerBatchUpsertParams params) {
+    return batchUpsertAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * Create many learners.
+   *
+   * <p>The asynchronous form of {@link #batchUpsert(LearnerBatchUpsertParams, RequestOptions)}: it
+   * sends the same request, with the same retries, without blocking the calling thread. The future
+   * fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a
+   * {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Operation}, which may finish in the background: {@code
+   *     waitForCompletion()} polls until it is done
+   */
+  public CompletableFuture<Operation> batchUpsertAsync(
+      LearnerBatchUpsertParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/learners:batchUpsert")
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .jsonBody(params)
+            .build();
+    return requester.requestAsync(request, Operation.class, options);
+  }
+
   /** Create a learner. */
   public LearnerWriteResult create(LearnerCreateParams params) {
     return create(params, RequestOptions.none());
@@ -90,6 +122,37 @@ public final class LearnerService {
             .jsonBody(params)
             .build();
     return requester.requestWriteResult(request, LearnerWriteResult.class, options);
+  }
+
+  /** Create a learner. */
+  public CompletableFuture<LearnerWriteResult> createAsync(LearnerCreateParams params) {
+    return createAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * Create a learner.
+   *
+   * <p>The asynchronous form of {@link #create(LearnerCreateParams, RequestOptions)}: it sends the
+   * same request, with the same retries, without blocking the calling thread. The future fails with
+   * the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the Learner; {@code isCreated()} is true when this call created it (201)
+   *     and false when it already existed (200)
+   */
+  public CompletableFuture<LearnerWriteResult> createAsync(
+      LearnerCreateParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/learners")
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .jsonBody(params)
+            .build();
+    return requester.requestWriteResultAsync(request, LearnerWriteResult.class, options);
   }
 
   /** Create a launch link. */
@@ -137,6 +200,53 @@ public final class LearnerService {
     return requester.request(request, LearnerLaunchLink.class, options);
   }
 
+  /** Create a launch link. */
+  public CompletableFuture<LearnerLaunchLink> createLaunchLinkAsync(String learnerId) {
+    return createLaunchLinkAsync(
+        learnerId, LearnerCreateLaunchLinkParams.builder().build(), RequestOptions.none());
+  }
+
+  /** Create a launch link. */
+  public CompletableFuture<LearnerLaunchLink> createLaunchLinkAsync(
+      String learnerId, RequestOptions options) {
+    return createLaunchLinkAsync(
+        learnerId, LearnerCreateLaunchLinkParams.builder().build(), options);
+  }
+
+  /** Create a launch link. */
+  public CompletableFuture<LearnerLaunchLink> createLaunchLinkAsync(
+      String learnerId, LearnerCreateLaunchLinkParams params) {
+    return createLaunchLinkAsync(learnerId, params, RequestOptions.none());
+  }
+
+  /**
+   * Create a launch link.
+   *
+   * <p>The asynchronous form of {@link #createLaunchLink(String, LearnerCreateLaunchLinkParams,
+   * RequestOptions)}: it sends the same request, with the same retries, without blocking the
+   * calling thread. The future fails with the {@code TeachMeHipaaException} subclass that method
+   * throws, never wrapped in a {@code CompletionException}. Cancelling it stops the call and its
+   * retries.
+   *
+   * @param learnerId The learner's canonical subject id (sub_… ULID).
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link LearnerLaunchLink}
+   */
+  public CompletableFuture<LearnerLaunchLink> createLaunchLinkAsync(
+      String learnerId, LearnerCreateLaunchLinkParams params, RequestOptions options) {
+    Objects.requireNonNull(learnerId, "learnerId");
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/learners/{learnerId}:createLaunchLink")
+            .pathParam("learnerId", learnerId)
+            .queryParam("courseId", params.getCourseId())
+            .retrySafe()
+            .build();
+    return requester.requestAsync(request, LearnerLaunchLink.class, options);
+  }
+
   /** Export learners. */
   public Operation export(LearnerExportParams params) {
     return export(params, RequestOptions.none());
@@ -164,6 +274,37 @@ public final class LearnerService {
             .jsonBody(params)
             .build();
     return requester.request(request, Operation.class, options);
+  }
+
+  /** Export learners. */
+  public CompletableFuture<Operation> exportAsync(LearnerExportParams params) {
+    return exportAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * Export learners.
+   *
+   * <p>The asynchronous form of {@link #export(LearnerExportParams, RequestOptions)}: it sends the
+   * same request, with the same retries, without blocking the calling thread. The future fails with
+   * the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Operation}, which may finish in the background: {@code
+   *     waitForCompletion()} polls until it is done
+   */
+  public CompletableFuture<Operation> exportAsync(
+      LearnerExportParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/learners:export")
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .jsonBody(params)
+            .build();
+    return requester.requestAsync(request, Operation.class, options);
   }
 
   /** List all learners. */
@@ -209,6 +350,51 @@ public final class LearnerService {
     return requester.requestPage(request, Pagination.cursor("cursor"), Learner.class, options);
   }
 
+  /** List all learners. */
+  public CompletableFuture<Page<Learner>> listAsync() {
+    return listAsync(LearnerListParams.builder().build(), RequestOptions.none());
+  }
+
+  /** List all learners. */
+  public CompletableFuture<Page<Learner>> listAsync(RequestOptions options) {
+    return listAsync(LearnerListParams.builder().build(), options);
+  }
+
+  /** List all learners. */
+  public CompletableFuture<Page<Learner>> listAsync(LearnerListParams params) {
+    return listAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * List all learners.
+   *
+   * <p>The asynchronous form of {@link #list(LearnerListParams, RequestOptions)}: it sends the same
+   * request, with the same retries, without blocking the calling thread. The future fails with the
+   * {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of one page of {@link Learner}; {@code nextCursor()} is {@code null} on the
+   *     last
+   */
+  public CompletableFuture<Page<Learner>> listAsync(
+      LearnerListParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/learners")
+            .queryParam("limit", params.getLimit())
+            .queryParam("cursor", params.getCursor())
+            .queryParam("email", params.getEmail())
+            .queryParam("externalId", params.getExternalId())
+            .queryParam("status", params.getStatus())
+            .queryParam("courseId", params.getCourseId())
+            .retrySafe()
+            .build();
+    return requester.requestPageAsync(request, Pagination.cursor("cursor"), Learner.class, options);
+  }
+
   /** Offboard a learner. */
   public Learner offboard(String learnerId) {
     return offboard(learnerId, LearnerOffboardParams.builder().build(), RequestOptions.none());
@@ -250,6 +436,50 @@ public final class LearnerService {
             .idempotencyKeyRequired()
             .build();
     return requester.request(request, Learner.class, options);
+  }
+
+  /** Offboard a learner. */
+  public CompletableFuture<Learner> offboardAsync(String learnerId) {
+    return offboardAsync(learnerId, LearnerOffboardParams.builder().build(), RequestOptions.none());
+  }
+
+  /** Offboard a learner. */
+  public CompletableFuture<Learner> offboardAsync(String learnerId, RequestOptions options) {
+    return offboardAsync(learnerId, LearnerOffboardParams.builder().build(), options);
+  }
+
+  /** Offboard a learner. */
+  public CompletableFuture<Learner> offboardAsync(String learnerId, LearnerOffboardParams params) {
+    return offboardAsync(learnerId, params, RequestOptions.none());
+  }
+
+  /**
+   * Offboard a learner.
+   *
+   * <p>The asynchronous form of {@link #offboard(String, LearnerOffboardParams, RequestOptions)}:
+   * it sends the same request, with the same retries, without blocking the calling thread. The
+   * future fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped
+   * in a {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param learnerId The learner's canonical subject id (sub_… ULID).
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Learner}
+   */
+  public CompletableFuture<Learner> offboardAsync(
+      String learnerId, LearnerOffboardParams params, RequestOptions options) {
+    Objects.requireNonNull(learnerId, "learnerId");
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/learners/{learnerId}:offboard")
+            .pathParam("learnerId", learnerId)
+            .queryParam("courseId", params.getCourseId())
+            .header("if-match", params.getIfMatch())
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .build();
+    return requester.requestAsync(request, Learner.class, options);
   }
 
   /** Remind a learner. */
@@ -294,6 +524,51 @@ public final class LearnerService {
     return requester.request(request, LearnerRemindAccepted.class, options);
   }
 
+  /** Remind a learner. */
+  public CompletableFuture<LearnerRemindAccepted> remindAsync(String learnerId) {
+    return remindAsync(learnerId, LearnerRemindParams.builder().build(), RequestOptions.none());
+  }
+
+  /** Remind a learner. */
+  public CompletableFuture<LearnerRemindAccepted> remindAsync(
+      String learnerId, RequestOptions options) {
+    return remindAsync(learnerId, LearnerRemindParams.builder().build(), options);
+  }
+
+  /** Remind a learner. */
+  public CompletableFuture<LearnerRemindAccepted> remindAsync(
+      String learnerId, LearnerRemindParams params) {
+    return remindAsync(learnerId, params, RequestOptions.none());
+  }
+
+  /**
+   * Remind a learner.
+   *
+   * <p>The asynchronous form of {@link #remind(String, LearnerRemindParams, RequestOptions)}: it
+   * sends the same request, with the same retries, without blocking the calling thread. The future
+   * fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a
+   * {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param learnerId The learner's canonical subject id (sub_… ULID).
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link LearnerRemindAccepted}
+   */
+  public CompletableFuture<LearnerRemindAccepted> remindAsync(
+      String learnerId, LearnerRemindParams params, RequestOptions options) {
+    Objects.requireNonNull(learnerId, "learnerId");
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/learners/{learnerId}:remind")
+            .pathParam("learnerId", learnerId)
+            .queryParam("courseId", params.getCourseId())
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .build();
+    return requester.requestAsync(request, LearnerRemindAccepted.class, options);
+  }
+
   /** Retrieve a learner. */
   public Learner retrieve(String learnerId) {
     return retrieve(learnerId, LearnerRetrieveParams.builder().build(), RequestOptions.none());
@@ -333,6 +608,48 @@ public final class LearnerService {
     return requester.request(request, Learner.class, options);
   }
 
+  /** Retrieve a learner. */
+  public CompletableFuture<Learner> retrieveAsync(String learnerId) {
+    return retrieveAsync(learnerId, LearnerRetrieveParams.builder().build(), RequestOptions.none());
+  }
+
+  /** Retrieve a learner. */
+  public CompletableFuture<Learner> retrieveAsync(String learnerId, RequestOptions options) {
+    return retrieveAsync(learnerId, LearnerRetrieveParams.builder().build(), options);
+  }
+
+  /** Retrieve a learner. */
+  public CompletableFuture<Learner> retrieveAsync(String learnerId, LearnerRetrieveParams params) {
+    return retrieveAsync(learnerId, params, RequestOptions.none());
+  }
+
+  /**
+   * Retrieve a learner.
+   *
+   * <p>The asynchronous form of {@link #retrieve(String, LearnerRetrieveParams, RequestOptions)}:
+   * it sends the same request, with the same retries, without blocking the calling thread. The
+   * future fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped
+   * in a {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param learnerId The learner's canonical subject id (sub_… ULID).
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Learner}
+   */
+  public CompletableFuture<Learner> retrieveAsync(
+      String learnerId, LearnerRetrieveParams params, RequestOptions options) {
+    Objects.requireNonNull(learnerId, "learnerId");
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/learners/{learnerId}")
+            .pathParam("learnerId", learnerId)
+            .queryParam("courseId", params.getCourseId())
+            .retrySafe()
+            .build();
+    return requester.requestAsync(request, Learner.class, options);
+  }
+
   /** Update a learner. */
   public Learner update(String learnerId, LearnerUpdateParams params) {
     return update(learnerId, params, RequestOptions.none());
@@ -365,6 +682,41 @@ public final class LearnerService {
             .mergePatchBody(params)
             .build();
     return requester.request(request, Learner.class, options);
+  }
+
+  /** Update a learner. */
+  public CompletableFuture<Learner> updateAsync(String learnerId, LearnerUpdateParams params) {
+    return updateAsync(learnerId, params, RequestOptions.none());
+  }
+
+  /**
+   * Update a learner.
+   *
+   * <p>The asynchronous form of {@link #update(String, LearnerUpdateParams, RequestOptions)}: it
+   * sends the same request, with the same retries, without blocking the calling thread. The future
+   * fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a
+   * {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * <p>Never retried: a lost response may hide a change that already happened.
+   *
+   * @param learnerId The learner's canonical subject id (sub_… ULID).
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Learner}
+   */
+  public CompletableFuture<Learner> updateAsync(
+      String learnerId, LearnerUpdateParams params, RequestOptions options) {
+    Objects.requireNonNull(learnerId, "learnerId");
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("PATCH", "/organizations/{orgId}/learners/{learnerId}")
+            .pathParam("learnerId", learnerId)
+            .queryParam("courseId", params.getCourseId())
+            .header("if-match", params.getIfMatch())
+            .mergePatchBody(params)
+            .build();
+    return requester.requestAsync(request, Learner.class, options);
   }
 
   /** Create or retrieve a learner by your id. */
@@ -400,5 +752,41 @@ public final class LearnerService {
             .jsonBody(params)
             .build();
     return requester.requestWriteResult(request, LearnerWriteResult.class, options);
+  }
+
+  /** Create or retrieve a learner by your id. */
+  public CompletableFuture<LearnerWriteResult> upsertByExternalIdAsync(
+      String externalId, LearnerUpsertByExternalIdParams params) {
+    return upsertByExternalIdAsync(externalId, params, RequestOptions.none());
+  }
+
+  /**
+   * Create or retrieve a learner by your id.
+   *
+   * <p>The asynchronous form of {@link #upsertByExternalId(String, LearnerUpsertByExternalIdParams,
+   * RequestOptions)}: it sends the same request, with the same retries, without blocking the
+   * calling thread. The future fails with the {@code TeachMeHipaaException} subclass that method
+   * throws, never wrapped in a {@code CompletionException}. Cancelling it stops the call and its
+   * retries.
+   *
+   * @param externalId Your id for the learner, URL-encoded.
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the Learner; {@code isCreated()} is true when this call created it (201)
+   *     and false when it already existed (200)
+   */
+  public CompletableFuture<LearnerWriteResult> upsertByExternalIdAsync(
+      String externalId, LearnerUpsertByExternalIdParams params, RequestOptions options) {
+    Objects.requireNonNull(externalId, "externalId");
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("PUT", "/organizations/{orgId}/learners/by-external-id/{externalId}")
+            .pathParam("externalId", externalId)
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .jsonBody(params)
+            .build();
+    return requester.requestWriteResultAsync(request, LearnerWriteResult.class, options);
   }
 }

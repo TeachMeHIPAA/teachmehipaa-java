@@ -33,6 +33,9 @@ against a fake of the API in CI, so the samples work as written.
    default, timeouts, a custom HTTP client, logging and requirements.
 10. [Versioning](guides/versioning.md): semantic versioning,
     `OPENAPI_VERSION` and how additive API changes reach you.
+11. [Async calls](guides/async.md): the `…Async` methods, which return
+    `CompletableFuture`, their threads, errors, cancelling, pages and
+    Operations.
 
 ## API reference
 

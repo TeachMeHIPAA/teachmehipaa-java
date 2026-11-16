@@ -7,6 +7,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -28,13 +29,21 @@ public final class Page<T> {
   private final String nextCursor;
   private final LastResponse lastResponse;
   private final Supplier<Page<T>> nextPage;
+  private final Supplier<CompletableFuture<Page<T>>> nextPageAsync;
 
-  /** {@code nextPage} is {@code null} on the last page. */
-  Page(List<T> items, String nextCursor, LastResponse lastResponse, Supplier<Page<T>> nextPage) {
+  /** The fetchers are unused on the last page. */
+  Page(
+      List<T> items,
+      String nextCursor,
+      LastResponse lastResponse,
+      Supplier<Page<T>> nextPage,
+      Supplier<CompletableFuture<Page<T>>> nextPageAsync) {
     this.items = items == null ? List.of() : List.copyOf(items);
     this.nextCursor = nextCursor;
     this.lastResponse = Objects.requireNonNull(lastResponse, "lastResponse");
     this.nextPage = nextCursor == null ? null : Objects.requireNonNull(nextPage, "nextPage");
+    this.nextPageAsync =
+        nextCursor == null ? null : Objects.requireNonNull(nextPageAsync, "nextPageAsync");
   }
 
   /** The objects on this page, in the API's order. */
@@ -71,6 +80,21 @@ public final class Page<T> {
       throw new NoSuchElementException("This is the last page; check hasNextPage() first");
     }
     return nextPage.get();
+  }
+
+  /**
+   * Fetches the next page with the same parameters and request options, without blocking. The
+   * future fails with the exception {@link #nextPage()} would throw, and cancelling it stops the
+   * fetch and its retries.
+   *
+   * @throws NoSuchElementException on the last page, before anything is sent; check {@link
+   *     #hasNextPage()} first
+   */
+  public CompletableFuture<Page<T>> nextPageAsync() {
+    if (nextPageAsync == null) {
+      throw new NoSuchElementException("This is the last page; check hasNextPage() first");
+    }
+    return nextPageAsync.get();
   }
 
   /**

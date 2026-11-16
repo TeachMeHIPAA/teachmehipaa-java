@@ -17,6 +17,14 @@ Generated from the Developer API document release `trimmed-2026-11-15`.
   Seats, Audit events, Webhook subscriptions, the Event log, Operations and
   `auth().introspect()`. One immutable, thread-safe client per API client,
   built with `TeachMeHipaaClient.builder()`.
+- An `…Async` sibling of every method that sends a request, returning a
+  `CompletableFuture` of the same type, sent with `HttpClient.sendAsync`.
+  Retries and Operation polls wait on a timer instead of a thread
+  (`AsyncSleeper`), concurrent calls share one Access token mint, failures
+  complete the future with the same exception subclass as the blocking call,
+  and cancelling stops retries and polls. `Page.nextPageAsync()` and
+  `Operation.waitForCompletionAsync()` round it out
+  ([#2](https://github.com/TeachMeHIPAA/teachmehipaa-java/issues/2)).
 - Client credentials authentication with cached, single-flight Access tokens
   renewed 60 s before expiry, and one renewal and replay on a 401.
 - Live and Sandbox Environments, a `baseUrl` override, narrower `scopes`, and

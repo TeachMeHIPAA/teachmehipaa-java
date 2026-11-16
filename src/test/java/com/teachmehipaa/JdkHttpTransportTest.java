@@ -7,6 +7,7 @@ import static com.teachmehipaa.Fixtures.LEARNER_JSON;
 import static com.teachmehipaa.Fixtures.tokenJson;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -15,6 +16,7 @@ import com.teachmehipaa.core.BinaryStreamResponse;
 import com.teachmehipaa.core.JdkHttpTransport;
 import com.teachmehipaa.core.TransportRequest;
 import com.teachmehipaa.core.TransportResponse;
+import com.teachmehipaa.exception.ApiTimeoutException;
 import com.teachmehipaa.model.Learner;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -173,6 +175,75 @@ class JdkHttpTransportTest {
     }
 
     assertArrayEquals(everyByte, received.toByteArray());
+  }
+
+  @Test
+  void sendsAsynchronouslyWithHttpClientSendAsync() {
+    TeachMeHipaaClient client =
+        TeachMeHipaaClient.builder()
+            .clientId(CLIENT_ID)
+            .clientSecret(CLIENT_SECRET)
+            .baseUrl(origin + "/v1")
+            .organizationId("org_acme")
+            .build();
+
+    Learner learner =
+        client.learners().retrieveAsync(LEARNER_ID).orTimeout(10, TimeUnit.SECONDS).join();
+
+    assertEquals(LEARNER_ID, learner.getLearnerId());
+    assertEquals("\"local\"", learner.getLastResponse().etag());
+    assertEquals(List.of("Bearer local.token"), received.get(1).headers().get("Authorization"));
+  }
+
+  @Test
+  void anAsyncResponseLateBeyondTheTimeoutFailsWithApiTimeoutException() {
+    CountDownLatch release = new CountDownLatch(1);
+    server.createContext(
+        "/v1/organizations/org_acme/learners/",
+        exchange -> {
+          try {
+            release.await(10, TimeUnit.SECONDS);
+          } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+          }
+          exchange.close();
+        });
+    TeachMeHipaaClient client =
+        TeachMeHipaaClient.builder()
+            .clientId(CLIENT_ID)
+            .clientSecret(CLIENT_SECRET)
+            .baseUrl(origin + "/v1")
+            .organizationId("org_acme")
+            .timeout(Duration.ofMillis(200))
+            .maxRetries(0)
+            .build();
+
+    Throwable failure =
+        client
+            .learners()
+            .retrieveAsync(LEARNER_ID)
+            .handle((learner, error) -> error)
+            .orTimeout(10, TimeUnit.SECONDS)
+            .join();
+    release.countDown();
+
+    assertInstanceOf(ApiTimeoutException.class, failure);
+  }
+
+  @Test
+  void anAsyncSendFailsWithAnIOExceptionWhenNoResponseArrives() {
+    server.stop(0);
+
+    Throwable failure =
+        new JdkHttpTransport()
+            .sendAsync(
+                new TransportRequest(
+                    "GET", URI.create(origin + "/v1/x"), Map.of(), null, Duration.ofSeconds(5)))
+            .handle((response, error) -> error)
+            .orTimeout(10, TimeUnit.SECONDS)
+            .join();
+
+    assertInstanceOf(IOException.class, failure);
   }
 
   @Test

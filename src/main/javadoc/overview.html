@@ -28,6 +28,10 @@ TeachMeHipaaClient client =
 Learner learner = client.learners().retrieve("sub_01JD8Z4N3QX5V7W9Y2B4C6D8EG");
 }</pre>
 
+<p>Every method that sends a request has an {@code …Async} sibling, such as
+{@code retrieveAsync}, that returns a {@link java.util.concurrent.CompletableFuture} of the same
+type without blocking the calling thread.</p>
+
 <p><strong>Packages</strong></p>
 <ul>
 <li>{@code com.teachmehipaa}: the client, its options, and webhook verification.</li>
@@ -52,6 +56,7 @@ your own HTTP transport and token provider.</li>
 <li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/testing.md">Testing</a></li>
 <li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/configuration.md">Configuration</a></li>
 <li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/versioning.md">Versioning</a></li>
+<li><a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/guides/async.md">Async calls</a></li>
 </ul>
 <p>The <a href="https://github.com/TeachMeHIPAA/teachmehipaa-java/blob/main/docs/reference/resources.md">resource
 reference</a> lists every method with its HTTP route and required Scopes.</p>
