@@ -2,6 +2,7 @@ package com.teachmehipaa;
 
 import static com.teachmehipaa.Fixtures.ACCESS_TOKEN;
 import static com.teachmehipaa.Fixtures.ETAG;
+import static com.teachmehipaa.Fixtures.INTROSPECTION_ROUTE;
 import static com.teachmehipaa.Fixtures.LEARNER_ID;
 import static com.teachmehipaa.Fixtures.LEARNER_JSON;
 import static com.teachmehipaa.Fixtures.LEARNER_ROUTE;
@@ -41,6 +42,7 @@ import com.teachmehipaa.model.UnknownAuditEvent;
 import com.teachmehipaa.model.UnknownAuditEventActor;
 import com.teachmehipaa.model.WebhookSubscription;
 import com.teachmehipaa.param.AuditEventListParams;
+import com.teachmehipaa.param.CourseListParams;
 import com.teachmehipaa.param.EnrollmentCancelParams;
 import com.teachmehipaa.param.EnrollmentPreviewImportParams;
 import com.teachmehipaa.param.ImportOptions;
@@ -50,6 +52,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
@@ -349,6 +352,33 @@ class GeneratedMethodsTest {
     assertEquals(0.8, courses.items().get(0).getPassingThreshold());
     assertTrue(api.requests().stream().noneMatch(r -> r.headers().containsKey("authorization")));
     assertEquals(2, api.requests().size());
+  }
+
+  @Test
+  void listsCoursesWithoutAnAccessTokenOrLookingUpAnOrganization() {
+    String route = "GET /v1/courses";
+    // Neither the token nor the introspection route is scripted: calling either fails the test.
+    FakeTransport api =
+        new FakeTransport()
+            .on(
+                route,
+                Reply.json(
+                    """
+                    {"items": [{"courseId": "hipaa-2026", "title": "HIPAA Training 2026",
+                                "courseVersion": "2026.1", "passingThreshold": 0.8}],
+                     "nextCursor": "cur_2"}
+                    """));
+    TeachMeHipaaClient client = clientFor(api).build();
+
+    Page<Course> page = client.courses().list(CourseListParams.builder().limit(1).build());
+
+    assertEquals(0.8, page.items().get(0).getPassingThreshold());
+    assertEquals("cur_2", page.nextCursor());
+    TransportRequest request = only(api, route);
+    assertEquals("limit=1", request.uri().getRawQuery());
+    assertFalse(request.headers().containsKey("authorization"));
+    assertEquals(List.of(), api.requestsTo(TOKEN_ROUTE));
+    assertEquals(List.of(), api.requestsTo(INTROSPECTION_ROUTE));
   }
 
   @Test

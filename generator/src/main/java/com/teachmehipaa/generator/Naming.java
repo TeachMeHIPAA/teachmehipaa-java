@@ -119,12 +119,18 @@ final class Naming {
     return constant;
   }
 
-  /** The design record's singular: drop a trailing "s" ({@code learners}, {@code seats}). */
+  /**
+   * The IR's resource names are regular plurals or uncountable ({@code compliance}), so dropping an
+   * "s" is all the inflection the generator needs.
+   */
   static String singular(String word) {
     return word.endsWith("s") ? word.substring(0, word.length() - 1) : word;
   }
 
-  /** {@code [webhookSubscriptions]} becomes {@code WebhookSubscription}; nested parts join. */
+  /**
+   * Joins every segment so a sub-resource ({@code widgets.parts}) can't collide with a top-level
+   * resource of the same leaf name ({@code parts}).
+   */
   static String singularPascal(List<String> resourcePath) {
     return resourcePath.stream().map(part -> pascal(singular(part))).collect(Collectors.joining());
   }
