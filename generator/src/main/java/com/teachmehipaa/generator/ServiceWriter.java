@@ -9,12 +9,14 @@ import java.util.stream.Collectors;
 /**
  * Renders {@code com.teachmehipaa.service}: one service per resource, reached from the client, with
  * overloads per method: path parameters, then the params (when the method has any), then the
- * request options.
+ * request options. Each method has an {@code …Async} sibling with the same overloads, returning a
+ * {@code CompletableFuture} of what the method returns.
  */
 final class ServiceWriter {
   private static final String CORE = "com.teachmehipaa.core.";
   private static final String THROWS =
       "@throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails";
+  private static final String FUTURE = "java.util.concurrent.CompletableFuture";
 
   private final Surface surface;
 
@@ -67,19 +69,49 @@ final class ServiceWriter {
       file.append("    return new " + child.serviceClass() + "(requester);\n  }\n");
     }
     for (Surface.MethodPlan plan : node.methods()) {
-      method(file, plan, plan.javaName(), returns(plan, file));
+      Returns returns = returns(plan, file);
+      method(file, plan, plan.javaName(), returns);
+      method(file, plan, plan.javaName(), async(returns, file));
       if (plan.streamName() != null) {
-        method(file, plan, plan.streamName(), streamReturns(plan, file));
+        Returns stream = streamReturns(plan, file);
+        method(file, plan, plan.streamName(), stream);
+        method(file, plan, plan.streamName(), async(stream, file));
       }
       if (plan.ifModifiedName() != null) {
-        ifModified(file, plan);
+        ifModified(file, plan, false);
+        ifModified(file, plan, true);
       }
     }
     return file.append("}\n");
   }
 
-  /** What a method returns and how the requester produces it. */
-  record Returns(String type, String call, String doc) {}
+  /**
+   * What a method returns and how the requester produces it.
+   *
+   * @param syncType for an {@code …Async} method, what its blocking twin returns; otherwise {@code
+   *     null}
+   */
+  record Returns(String type, String call, String doc, String syncType) {
+    Returns(String type, String call, String doc) {
+      this(type, call, doc, null);
+    }
+
+    boolean isAsync() {
+      return syncType != null;
+    }
+  }
+
+  /** The suffix of every asynchronous sibling's name. */
+  static final String ASYNC = "Async";
+
+  /** The {@code …Async} form of {@code returns}: a future of the same type, from the async call. */
+  static Returns async(Returns returns, JavaFile file) {
+    return new Returns(
+        file.use(FUTURE) + "<" + returns.type() + ">",
+        returns.call().replaceFirst("\\(", ASYNC + "("),
+        "a future of " + returns.doc(),
+        returns.type());
+  }
 
   static Returns returns(Surface.MethodPlan plan, JavaFile file) {
     Ir.Response response = plan.method().response();
@@ -155,7 +187,8 @@ final class ServiceWriter {
     return file.use(Surface.MODEL_PACKAGE + "." + ((Ir.Ref) ref).name());
   }
 
-  private void method(JavaFile file, Surface.MethodPlan plan, String javaName, Returns returns) {
+  private void method(JavaFile file, Surface.MethodPlan plan, String syncName, Returns returns) {
+    String javaName = returns.isAsync() ? syncName + ASYNC : syncName;
     Ir.Method method = plan.method();
     String options = file.use("com.teachmehipaa.RequestOptions");
     String params =
@@ -191,14 +224,21 @@ final class ServiceWriter {
     }
     tags.add("@param options settings for this call only, such as a timeout or request id");
     tags.add("@return " + returns.doc());
-    tags.add(THROWS);
     String description =
         Javadoc.present(method.description()) ? Javadoc.text(method.description()) : null;
     String retries =
         method.retrySafe()
             ? null
             : "Never retried: a lost response may hide a change that already happened.";
-    file.append("\n").append(Javadoc.block("  ", nonNull(summary, description, retries), tags));
+    List<String> paragraphs;
+    if (returns.isAsync()) {
+      paragraphs =
+          nonNull(summary, asyncParagraph(syncName, overloads.get(overloads.size() - 1)), retries);
+    } else {
+      tags.add(THROWS);
+      paragraphs = nonNull(summary, description, retries);
+    }
+    file.append("\n").append(Javadoc.block("  ", paragraphs, tags));
     file.append("  public " + returns.type() + " " + javaName + "(");
     file.append(String.join(", ", overloads.get(overloads.size() - 1)) + ") {\n");
     String objects = file.use("java.util.Objects");
@@ -211,6 +251,26 @@ final class ServiceWriter {
     file.append("    " + objects + ".requireNonNull(options, \"options\");\n");
     appendRequest(file, plan, null);
     file.append("    return requester." + returns.call() + ";\n  }\n");
+  }
+
+  /**
+   * The paragraph that ties an {@code …Async} method to its blocking twin.
+   *
+   * @param parameters the full overload's parameter declarations, such as {@code String certId}
+   */
+  static String asyncParagraph(String syncName, List<String> parameters) {
+    String types =
+        parameters.stream()
+            .map(parameter -> parameter.substring(0, parameter.lastIndexOf(' ')))
+            .collect(Collectors.joining(", "));
+    return "The asynchronous form of {@link #"
+        + syncName
+        + "("
+        + types
+        + ")}: it sends the same request, with the same retries, without blocking the calling"
+        + " thread. The future fails with the {@code TeachMeHipaaException} subclass that method"
+        + " throws, never wrapped in a {@code CompletionException}. Cancelling it stops the call"
+        + " and its retries.";
   }
 
   /**
@@ -305,9 +365,10 @@ final class ServiceWriter {
     file.append("            .build();\n");
   }
 
-  private void ifModified(JavaFile file, Surface.MethodPlan plan) {
+  private void ifModified(JavaFile file, Surface.MethodPlan plan, boolean async) {
     Ir.Method method = plan.method();
-    String name = plan.ifModifiedName();
+    String syncName = plan.ifModifiedName();
+    String name = async ? syncName + ASYNC : syncName;
     String type = model(((Ir.ModelResponse) method.response()).type(), file);
     String optional = file.use("java.util.Optional");
     String options = file.use("com.teachmehipaa.RequestOptions");
@@ -316,31 +377,22 @@ final class ServiceWriter {
     String head =
         pathArguments.stream().map(arg -> "String " + arg + ", ").collect(Collectors.joining());
     String forwarded = pathArguments.stream().map(arg -> arg + ", ").collect(Collectors.joining());
-    String returnType = optional + "<" + type + ">";
+    String syncReturnType = optional + "<" + type + ">";
+    String returnType = async ? file.use(FUTURE) + "<" + syncReturnType + ">" : syncReturnType;
     String what = Naming.words(type).toLowerCase(Locale.ROOT);
     String summary = "Retrieves the " + what + " unless the copy you hold is current.";
+    String noEtag =
+        "@throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent";
 
     file.append("\n").append(Javadoc.block("  ", summary));
     file.append("  public " + returnType + " " + name + "(" + head + "String etag) {\n");
     file.append("    return " + name + "(" + forwarded + "etag, " + options + ".none());\n  }\n");
 
-    file.append("\n")
-        .append(
-            Javadoc.block(
-                "  ",
-                List.of(summary),
-                List.of(
-                    "@throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent")));
+    file.append("\n").append(Javadoc.block("  ", List.of(summary), List.of(noEtag)));
     file.append("  public " + returnType + " " + name + "(" + head + type + " cached) {\n");
     file.append("    return " + name + "(" + forwarded + "cached, " + options + ".none());\n  }\n");
 
-    file.append("\n")
-        .append(
-            Javadoc.block(
-                "  ",
-                List.of(summary),
-                List.of(
-                    "@throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent")));
+    file.append("\n").append(Javadoc.block("  ", List.of(summary), List.of(noEtag)));
     file.append(
         "  public "
             + returnType
@@ -361,28 +413,35 @@ final class ServiceWriter {
             + ".of(cached), options);\n  }\n");
 
     List<String> tags = new ArrayList<>();
+    List<String> fullParameters = new ArrayList<>();
     for (Ir.Param param : method.pathParams()) {
       String doc = Javadoc.present(param.description()) ? Javadoc.text(param.description()) : "";
       tags.add(("@param " + param.name() + " " + doc).trim());
     }
+    pathArguments.forEach(arg -> fullParameters.add("String " + arg));
+    fullParameters.add("String etag");
+    fullParameters.add(options + " options");
     tags.add("@param etag the ETag of the copy you hold, from {@code getLastResponse().etag()}");
     tags.add("@param options settings for this call only, such as a timeout or request id");
-    tags.add(
-        "@return the {@link "
+    String result =
+        "the {@link "
             + type
             + "} when it changed, or empty when the API answers 304 Not"
-            + " Modified and your copy is current");
-    tags.add(THROWS);
-    file.append("\n")
-        .append(
-            Javadoc.block(
-                "  ",
-                List.of(
-                    "Retrieves the "
-                        + what
-                        + " only if it changed since you read the copy you hold: sends"
-                        + " {@code If-None-Match}, so an unchanged one costs no body."),
-                tags));
+            + " Modified and your copy is current";
+    tags.add("@return " + (async ? "a future of " + result : result));
+    if (!async) {
+      tags.add(THROWS);
+    }
+    List<String> paragraphs = new ArrayList<>();
+    paragraphs.add(
+        "Retrieves the "
+            + what
+            + " only if it changed since you read the copy you hold: sends"
+            + " {@code If-None-Match}, so an unchanged one costs no body.");
+    if (async) {
+      paragraphs.add(asyncParagraph(syncName, fullParameters));
+    }
+    file.append("\n").append(Javadoc.block("  ", paragraphs, tags));
     file.append(
         "  public "
             + returnType
@@ -400,7 +459,11 @@ final class ServiceWriter {
     file.append("    " + objects + ".requireNonNull(options, \"options\");\n");
     appendRequest(file, plan, "etag");
     file.append(
-        "    return requester.requestIfModified(request, " + type + ".class, options);\n  }\n");
+        "    return requester.requestIfModified"
+            + (async ? ASYNC : "")
+            + "(request, "
+            + type
+            + ".class, options);\n  }\n");
   }
 
   private static List<String> nonNull(String... paragraphs) {

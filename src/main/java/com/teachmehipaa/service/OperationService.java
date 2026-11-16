@@ -6,6 +6,7 @@ import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.model.Operation;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 /** Operations in the client's Organization. Reach it through {@code client.operations()}. */
 public final class OperationService {
@@ -41,5 +42,34 @@ public final class OperationService {
             .retrySafe()
             .build();
     return requester.request(request, Operation.class, options);
+  }
+
+  /** Retrieve an operation. */
+  public CompletableFuture<Operation> retrieveAsync(String operationId) {
+    return retrieveAsync(operationId, RequestOptions.none());
+  }
+
+  /**
+   * Retrieve an operation.
+   *
+   * <p>The asynchronous form of {@link #retrieve(String, RequestOptions)}: it sends the same
+   * request, with the same retries, without blocking the calling thread. The future fails with the
+   * {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param operationId The server-minted opaque operation id.
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Operation}, which may finish in the background: {@code
+   *     waitForCompletion()} polls until it is done
+   */
+  public CompletableFuture<Operation> retrieveAsync(String operationId, RequestOptions options) {
+    Objects.requireNonNull(operationId, "operationId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/operations/{operationId}")
+            .pathParam("operationId", operationId)
+            .retrySafe()
+            .build();
+    return requester.requestAsync(request, Operation.class, options);
   }
 }

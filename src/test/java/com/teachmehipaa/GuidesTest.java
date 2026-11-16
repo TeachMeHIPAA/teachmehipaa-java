@@ -34,6 +34,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +43,7 @@ import org.springframework.http.ResponseEntity;
 /** The samples in {@code docs/guides/*.md} (see {@link DocSampleTest}), one check each. */
 class GuidesTest extends DocSampleTest {
   private static final String STATIC_TOKEN = "eyJhbGciOiJIUzI1NiJ9.static.sig";
+  private static final String ORG_LEARNER = "GET " + ORG + "/learners/";
 
   @Override
   List<Path> docs() {
@@ -61,11 +64,11 @@ class GuidesTest extends DocSampleTest {
         Map.entry("organization", this::organization),
         Map.entry("auth-static-token", this::authStaticToken),
         Map.entry("public-lookups", this::publicLookups),
-        // errors-and-retries.md
+        // exceptions.md
         Map.entry("errors", this::errors),
         Map.entry("errors-code", this::errorsCode),
         Map.entry("request-options", this::requestOptions),
-        // pagination-and-events.md
+        // pagination.md
         Map.entry("pagination", this::pagination),
         Map.entry("pagination-pages", this::paginationPages),
         Map.entry("events-list", this::eventsList),
@@ -85,7 +88,7 @@ class GuidesTest extends DocSampleTest {
         Map.entry("csv-import", this::csvImport),
         Map.entry("pdf-download", this::pdfDownload),
         Map.entry("bulk-changes", this::bulkChanges),
-        // conditional-requests.md
+        // optimistic-concurrency.md
         Map.entry("conditional-write", this::conditionalWrite),
         Map.entry("conditional-update-subscription", this::conditionalUpdateSubscription),
         Map.entry("not-modified", this::notModified),
@@ -94,13 +97,20 @@ class GuidesTest extends DocSampleTest {
         Map.entry("testing-fake-transport", this::testingFakeTransport),
         Map.entry("testing-mock-server", this::testingMockServer),
         Map.entry("testing-webhook-handler", this::testingWebhookHandler),
-        // configuration.md
+        // client.md
         Map.entry("configuration", this::configuration),
         Map.entry("configuration-per-call", this::configurationPerCall),
         Map.entry("configuration-http-client", this::configurationHttpClient),
         Map.entry("logging", this::logging),
-        // versioning.md
-        Map.entry("versioning-open-enums", this::versioningOpenEnums));
+        // compatibility.md
+        Map.entry("versioning-open-enums", this::versioningOpenEnums),
+        // async.md
+        Map.entry("async-retrieve", this::asyncRetrieve),
+        Map.entry("async-fan-out", this::asyncFanOut),
+        Map.entry("async-errors", this::asyncErrors),
+        Map.entry("async-timeout", this::asyncTimeout),
+        Map.entry("async-pages", this::asyncPages),
+        Map.entry("async-operation", this::asyncOperation));
   }
 
   private FakeTransport signedIn() {
@@ -228,7 +238,7 @@ class GuidesTest extends DocSampleTest {
             .noneMatch(request -> request.headers().containsKey("authorization")));
   }
 
-  // errors-and-retries.md
+  // exceptions.md
 
   private void errors() throws Exception {
     signedIn()
@@ -291,7 +301,7 @@ class GuidesTest extends DocSampleTest {
     assertEquals(List.of(enrollmentId(1) + " req_e1"), printed());
   }
 
-  // pagination-and-events.md
+  // pagination.md
 
   private void pagination() throws Exception {
     signedIn()
@@ -649,7 +659,7 @@ class GuidesTest extends DocSampleTest {
     assertEquals(1, api.requestsTo("GET " + ORG + "/operations/" + OPERATION_ID).size());
   }
 
-  // conditional-requests.md
+  // optimistic-concurrency.md
 
   private void conditionalWrite() throws Exception {
     String patchRoute = "PATCH " + ORG + "/learners/" + LEARNER_ID;
@@ -738,7 +748,7 @@ class GuidesTest extends DocSampleTest {
     call(construct("testing-webhook-handler"), "acceptsASignedDeliveryAndRefusesTamperedOnes");
   }
 
-  // configuration.md
+  // client.md
 
   private void configuration() throws Exception {
     run("configuration");
@@ -777,7 +787,7 @@ class GuidesTest extends DocSampleTest {
         printed().stream().map(line -> line.replaceAll("\\d+ ms", "N ms")).toList());
   }
 
-  // versioning.md
+  // compatibility.md
 
   private void versioningOpenEnums() throws Exception {
     signedIn()
@@ -797,5 +807,78 @@ class GuidesTest extends DocSampleTest {
          "status": "valid", "revokedAt": null}
         """
         .formatted(n, LEARNER_ID);
+  }
+
+  // async.md
+
+  private void asyncRetrieve() throws Exception {
+    signedIn().on(LEARNER_ROUTE, Reply.json(LEARNER_JSON));
+
+    run("async-retrieve");
+
+    assertEquals(List.of("Ana Lima in_progress"), printed());
+  }
+
+  private void asyncFanOut() throws Exception {
+    signedIn()
+        .on(LEARNER_ROUTE, Reply.json(LEARNER_JSON))
+        .on(ORG_LEARNER + EXPIRED_LEARNER_ID, Reply.json(EXPIRED_LEARNER_JSON));
+
+    run("async-fan-out");
+
+    assertEquals(List.of("ana@example.com", "bo@example.com"), printed());
+    assertEquals(1, api.requestsTo(TOKEN_ROUTE).size());
+  }
+
+  private void asyncErrors() throws Exception {
+    signedIn()
+        .on(
+            ORG_LEARNER + EXPIRED_LEARNER_ID,
+            Reply.problem(
+                404,
+                """
+                {"title": "Not found", "status": 404, "code": "not_found"}
+                """));
+
+    run("async-errors");
+
+    assertEquals(List.of("no such Learner"), printed());
+  }
+
+  private void asyncTimeout() throws Exception {
+    signedIn().on(LEARNER_ROUTE, Reply.json(LEARNER_JSON));
+
+    run("async-timeout");
+
+    assertEquals(List.of("ana@example.com"), printed());
+  }
+
+  private void asyncPages() throws Exception {
+    signedIn()
+        .on(
+            "GET " + ORG + "/learners",
+            request ->
+                "cursor-2".equals(query(request).get("cursor"))
+                    ? page(EXPIRED_LEARNER_JSON)
+                    : pageWithNext("cursor-2", LEARNER_JSON, LEARNER_JSON));
+
+    Object sample = construct("async-pages");
+    @SuppressWarnings("unchecked")
+    CompletableFuture<Integer> count = (CompletableFuture<Integer>) call(sample, "countLearners");
+
+    assertEquals(3, count.get(5, TimeUnit.SECONDS));
+    assertEquals(2, api.requestsTo("GET " + ORG + "/learners").size());
+  }
+
+  private void asyncOperation() throws Exception {
+    signedIn()
+        .on(
+            "POST " + ORG + "/certificates:export",
+            Reply.json(202, operation(true, EXPORT_ARTIFACT)));
+
+    run("async-operation");
+
+    assertEquals(List.of("learners-org_acme.csv 1"), printed());
+    assertEquals(List.of(), asyncSleeper.sleeps());
   }
 }

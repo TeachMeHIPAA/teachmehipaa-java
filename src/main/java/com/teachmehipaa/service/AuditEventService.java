@@ -9,6 +9,7 @@ import com.teachmehipaa.core.Pagination;
 import com.teachmehipaa.model.AuditEvent;
 import com.teachmehipaa.param.AuditEventListParams;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 /** Audit events in the client's Organization. Reach it through {@code client.auditEvents()}. */
 public final class AuditEventService {
@@ -61,5 +62,52 @@ public final class AuditEventService {
             .retrySafe()
             .build();
     return requester.requestPage(request, Pagination.cursor("cursor"), AuditEvent.class, options);
+  }
+
+  /** List all audit events. */
+  public CompletableFuture<Page<AuditEvent>> listAsync() {
+    return listAsync(AuditEventListParams.builder().build(), RequestOptions.none());
+  }
+
+  /** List all audit events. */
+  public CompletableFuture<Page<AuditEvent>> listAsync(RequestOptions options) {
+    return listAsync(AuditEventListParams.builder().build(), options);
+  }
+
+  /** List all audit events. */
+  public CompletableFuture<Page<AuditEvent>> listAsync(AuditEventListParams params) {
+    return listAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * List all audit events.
+   *
+   * <p>The asynchronous form of {@link #list(AuditEventListParams, RequestOptions)}: it sends the
+   * same request, with the same retries, without blocking the calling thread. The future fails with
+   * the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of one page of {@link AuditEvent}; {@code nextCursor()} is {@code null} on the
+   *     last
+   */
+  public CompletableFuture<Page<AuditEvent>> listAsync(
+      AuditEventListParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/audit-events")
+            .queryParam("limit", params.getLimit())
+            .queryParam("cursor", params.getCursor())
+            .queryParam("type", params.getType())
+            .queryParam("transition", params.getTransition())
+            .queryParam("subjectId", params.getSubjectId())
+            .queryParam("since", params.getSince())
+            .queryParam("until", params.getUntil())
+            .retrySafe()
+            .build();
+    return requester.requestPageAsync(
+        request, Pagination.cursor("cursor"), AuditEvent.class, options);
   }
 }

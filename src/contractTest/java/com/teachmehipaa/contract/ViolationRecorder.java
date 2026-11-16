@@ -10,6 +10,7 @@ import com.teachmehipaa.core.TransportResponse;
 import java.io.IOException;
 import java.net.http.HttpHeaders;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -40,12 +41,43 @@ final class ViolationRecorder implements HttpTransport {
     return response;
   }
 
+  @Override
+  public CompletableFuture<TransportResponse> sendAsync(TransportRequest request) {
+    return delegate
+        .sendAsync(request)
+        .thenApply(
+            response -> {
+              recordUnchecked(request, response.headers());
+              return response;
+            });
+  }
+
+  @Override
+  public CompletableFuture<StreamingTransportResponse> sendStreamingAsync(
+      TransportRequest request) {
+    return delegate
+        .sendStreamingAsync(request)
+        .thenApply(
+            response -> {
+              recordUnchecked(request, response.headers());
+              return response;
+            });
+  }
+
   List<String> found() {
     return List.copyOf(found);
   }
 
   void clear() {
     found.clear();
+  }
+
+  private void recordUnchecked(TransportRequest request, HttpHeaders headers) {
+    try {
+      record(request, headers);
+    } catch (IOException unreadable) {
+      throw new java.io.UncheckedIOException(unreadable);
+    }
   }
 
   private void record(TransportRequest request, HttpHeaders headers) throws IOException {

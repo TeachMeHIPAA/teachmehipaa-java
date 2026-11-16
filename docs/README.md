@@ -1,84 +1,74 @@
-# Documentation
+# teachmehipaa-java documentation
 
-Documentation for `teachmehipaa-java`, the Java library for the TeachMeHIPAA
-Developer API. New here? Start with
+Reference documentation for `com.teachmehipaa:teachmehipaa-java`, the Java 17+
+client for the TeachMeHIPAA Developer API. A first integration reads
+[Installation](guides/installation.md), then
 [Getting started](guides/getting-started.md).
 
 ## Guides
 
-Every Java sample in these guides is compiled against the library and run
-against a fake of the API in CI, so the samples work as written.
+Each Java block in the guides is compiled against the library alone and run
+against a fake of the API by `./gradlew test`, so the samples match the
+current code.
 
-1. [Getting started](guides/getting-started.md): install, credentials, first
-   calls, inviting a Learner.
-2. [Authentication](guides/authentication.md): client credentials, Scopes,
-   Environments (Live and Sandbox), the Organization binding, static Access
-   tokens and public lookups without credentials.
-3. [Errors and retries](guides/errors-and-retries.md): exceptions,
-   `getCode()`, request ids, automatic retries, idempotency keys and request
-   options.
-4. [Pagination and the Event log](guides/pagination-and-events.md):
-   auto-paging lists, reading the Event log and tailing it.
-5. [Webhooks](guides/webhooks.md): Webhook subscriptions, verifying
-   Deliveries with the raw body and exact path, Spring Boot, servlet and JDK
-   HTTP server handlers, Test deliveries and signing your own test
-   Deliveries.
-6. [Operations and files](guides/operations-and-files.md): waiting on
-   Operations, CSV exports and imports, Certificate PDFs and bulk changes.
-7. [Conditional requests](guides/conditional-requests.md): ETags, `ifMatch`,
-   `retrieveIfModified` and merge-patch updates.
-8. [Testing](guides/testing.md): the Sandbox, injecting a fake
-   `HttpTransport`, mock servers and testing webhook handlers.
-9. [Configuration](guides/configuration.md): every builder option and its
-   default, timeouts, a custom HTTP client, logging and requirements.
-10. [Versioning](guides/versioning.md): semantic versioning,
-    `OPENAPI_VERSION` and how additive API changes reach you.
+| # | Guide | Contents |
+| --- | --- | --- |
+| 1 | [Installation](guides/installation.md) | Requirements, Maven and Gradle declarations, transitive Jackson, building the pre-release from source |
+| 2 | [Getting started](guides/getting-started.md) | Sandbox credentials, the first call, inviting and upserting a Learner, the first `catch` |
+| 3 | [The client](guides/client.md) | Every builder option and default, lifecycle, thread-safety guarantees, `RequestOptions`, `AppInfo`, a custom `HttpClient`, logging |
+| 4 | [Authentication](guides/authentication.md) | Client credentials and the token cache, Scopes, Environments, the Organization binding, `TokenProvider`, public lookups |
+| 5 | [Exceptions and retries](guides/exceptions.md) | Checked versus unchecked, the exception hierarchy, problem details, retry rules, idempotency keys |
+| 6 | [Async with CompletableFuture](guides/async.md) | `…Async` methods, which threads run what, failures, cancellation and `orTimeout`, async pages and Operations |
+| 7 | [Pagination and the Event log](guides/pagination.md) | `Page<T>`, auto-paging iterables and streams, the Event log, `EventTail` |
+| 8 | [Webhooks](guides/webhooks.md) | Subscriptions, signature verification in Spring MVC, Jakarta Servlet and `com.sun.net.httpserver`, Test deliveries |
+| 9 | [Operations and files](guides/operations-and-files.md) | Waiting on and resuming Operations, CSV export and import, streamed PDFs, bulk changes |
+| 10 | [Optimistic concurrency](guides/optimistic-concurrency.md) | ETags, `ifMatch`, merge patches, `retrieveIfModified` |
+| 11 | [Testing](guides/testing.md) | The Sandbox, a fake `HttpTransport`, Prism, webhook handler tests |
+| 12 | [Compatibility](guides/compatibility.md) | Semantic versioning, supported JDKs, `OPENAPI_VERSION`, forward-compatible models |
 
 ## API reference
 
-- [Resource reference](reference/resources.md): every service and method,
-  with its overloads, HTTP route, required Scopes, retry, idempotency and
-  conditional behavior, and return type. Generated from the Developer API's
-  SDK IR by `./gradlew generate`.
+- [Resource reference](reference/resources.md): each service method with its
+  overloads (blocking and async), HTTP route, Scopes, retry, idempotency and
+  conditional behavior. `./gradlew generate` writes it from the SDK IR.
+- [`code-samples.json`](reference/code-samples.json): one Java snippet per
+  Developer API operation, generated alongside it for the TeachMeHIPAA API
+  reference site.
 - [Javadoc](https://teachmehipaa.github.io/teachmehipaa-java/): every public
-  class, method and builder. Build it locally with `./gradlew javadoc`; it
-  lands in `build/docs/javadoc/`.
+  type. `./gradlew javadoc` builds it into `build/docs/javadoc/`.
 
 ## Examples
 
-Runnable programs in [`examples/`](../examples/README.md), each reading
-`TMH_CLIENT_ID` and `TMH_CLIENT_SECRET` and targeting the Sandbox. Run one
-with `./gradlew runExample -Pexample=<Name>`:
+[`examples/`](../examples/README.md) holds runnable programs that read
+`TMH_CLIENT_ID` and `TMH_CLIENT_SECRET` and call the Sandbox. Run one with
+`./gradlew runExample -Pexample=<Name>`.
 
-- [`Quickstart.java`](../examples/Quickstart.java): the Compliance summary and
-  a few Learners.
-- [`SyncRoster.java`](../examples/SyncRoster.java): sync a roster with
-  `upsertByExternalId`.
-- [`WebhookServer.java`](../examples/WebhookServer.java): a webhook endpoint
-  on the JDK's HTTP server that verifies Deliveries.
-- [`ExportCertificates.java`](../examples/ExportCertificates.java): export
-  Certificates to CSV and wait for the Operation.
+| Program | Demonstrates |
+| --- | --- |
+| [`Quickstart.java`](../examples/Quickstart.java) | The Compliance summary and the first Learners |
+| [`SyncRoster.java`](../examples/SyncRoster.java) | A roster sync with `upsertByExternalId` |
+| [`WebhookServer.java`](../examples/WebhookServer.java) | A verifying webhook endpoint on the JDK's HTTP server |
+| [`ExportCertificates.java`](../examples/ExportCertificates.java) | A Certificate export, waiting on its Operation |
 
-## Contributing and design records
+## Design records and contributing
 
-These explain how the library is built and why. You don't need them to use
-it.
+Background on how the library is built. Using it requires none of this.
 
-- [CONTRIBUTING.md](../CONTRIBUTING.md): setup, generated code, tests and
-  how the documentation is built.
-- [`adr/`](adr/): architecture decision records, such as
-  [generated surface from a shared IR](adr/0001-generated-surface-from-shared-ir.md),
+- [CONTRIBUTING.md](../CONTRIBUTING.md): building, the generator, the test
+  suites and how the documentation is checked.
+- [`adr/`](adr/): architecture decision records, among them
+  [the generated surface](adr/0001-generated-surface-from-shared-ir.md),
   [the Organization bound to the client](adr/0003-organization-bound-to-client.md),
   [webhook verification needs the path](adr/0005-webhook-verification-needs-the-path.md),
   [tolerant models and open enums](adr/0006-tolerant-models-open-enums.md),
   [no telemetry, no body logging](adr/0007-no-telemetry-no-body-logging.md)
-  and [Java 17 with unchecked exceptions and Jackson](adr/0008-java17-unchecked-jackson.md).
-  Superseded records stay, marked as such.
-- [`design/`](design/grilling-2026-11-15.md): the design review that settled
-  the library's interface.
-- [`research/`](research/stripe-java.md): research into Stripe's Java
-  library, whose conventions this library follows where they fit.
-- [`agents/`](agents/domain.md): conventions for coding agents working on
-  this repository: domain docs, the issue tracker and triage labels.
-- [GLOSSARY.md](../GLOSSARY.md): the terms these docs use, such as Learner,
-  Enrollment and Delivery.
+  and [Java 17, unchecked exceptions and Jackson](adr/0008-java17-unchecked-jackson.md).
+  Superseded records remain, marked as superseded.
+- [`design/`](design/grilling-2026-11-15.md): the design review that fixed the
+  public interface.
+- [`research/`](research/stripe-java.md): the study of `stripe-java` whose
+  conventions this library follows where they fit.
+- [`agents/`](agents/domain.md): conventions for coding agents: domain docs,
+  the issue tracker, triage labels.
+- [GLOSSARY.md](../GLOSSARY.md): Learner, Enrollment, Delivery and the other
+  domain terms.

@@ -3,6 +3,7 @@ package com.teachmehipaa;
 import static com.teachmehipaa.core.Arguments.requireNonBlank;
 
 import com.teachmehipaa.core.ApiRequester;
+import com.teachmehipaa.core.AsyncSleeper;
 import com.teachmehipaa.core.ClientConfig;
 import com.teachmehipaa.core.ClientCredentialsTokenProvider;
 import com.teachmehipaa.core.ConnectionSettings;
@@ -30,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * A client for one Organization's view of the TeachMeHIPAA Developer API.
@@ -47,6 +49,10 @@ import java.util.Objects;
  * Learner learner = client.learners().retrieve("sub_...");
  * }</pre>
  *
+ * <p>Every method that sends a request has an {@code …Async} sibling, such as {@code
+ * learners().retrieveAsync(…)}, that returns a {@link CompletableFuture} of the same type without
+ * blocking the calling thread.
+ *
  * <p>A caller that gets Access tokens some other way passes a {@link StaticTokenProvider} instead
  * of the id and secret.
  */
@@ -63,6 +69,15 @@ public final class TeachMeHipaaClient {
               "This client has no credentials, so it can only call public endpoints such as"
                   + " courses() and certificateVerifications(). Build it with clientId and"
                   + " clientSecret, or a tokenProvider.");
+        }
+
+        @Override
+        public CompletableFuture<String> accessTokenAsync() {
+          try {
+            return CompletableFuture.completedFuture(accessToken());
+          } catch (IllegalStateException noCredentials) {
+            return CompletableFuture.failedFuture(noCredentials);
+          }
         }
 
         @Override
@@ -214,6 +229,7 @@ public final class TeachMeHipaaClient {
     private int maxRetries = DEFAULT_MAX_RETRIES;
     private Clock clock = Clock.systemUTC();
     private Sleeper sleeper = Sleeper.SYSTEM;
+    private AsyncSleeper asyncSleeper = AsyncSleeper.SYSTEM;
     private RequestLogger logger;
 
     private Builder() {}
@@ -310,6 +326,15 @@ public final class TeachMeHipaaClient {
       return this;
     }
 
+    /**
+     * Waits between retries and Operation polls of the {@code …Async} methods. For tests; defaults
+     * to a timer that holds no thread ({@link AsyncSleeper#SYSTEM}).
+     */
+    public Builder asyncSleeper(AsyncSleeper asyncSleeper) {
+      this.asyncSleeper = Objects.requireNonNull(asyncSleeper, "asyncSleeper");
+      return this;
+    }
+
     /** Your software's name, version and URL, sent in the {@code User-Agent}. */
     public Builder appInfo(AppInfo appInfo) {
       connection = connection.withAppInfo(appInfo);
@@ -353,6 +378,7 @@ public final class TeachMeHipaaClient {
               connection.resolvedTransport(),
               clock,
               sleeper,
+              asyncSleeper,
               logger);
       return new TeachMeHipaaClient(this, config);
     }

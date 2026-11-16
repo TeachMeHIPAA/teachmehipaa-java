@@ -150,6 +150,7 @@ abstract class DocSampleTest {
   private PrintStream realStdout;
   FakeTransport api;
   FakeSleeper sleeper;
+  FakeAsyncSleeper asyncSleeper;
   DocHarness.Storage storage;
 
   /** A fresh directory for each check to write files into. */
@@ -299,11 +300,13 @@ abstract class DocSampleTest {
     FakeClock clock = new FakeClock();
     api = new FakeTransport();
     sleeper = new FakeSleeper(clock);
+    asyncSleeper = new FakeAsyncSleeper(clock);
     storage = new DocHarness.Storage();
     work = Files.createTempDirectory(runClasses, "work");
     DocHarness.api = api;
     DocHarness.clock = clock;
     DocHarness.sleeper = sleeper;
+    DocHarness.asyncSleeper = asyncSleeper;
     DocHarness.storage = storage;
     stdout.reset();
     realStdout = System.out;
@@ -316,6 +319,7 @@ abstract class DocSampleTest {
     DocHarness.api = null;
     DocHarness.clock = null;
     DocHarness.sleeper = null;
+    DocHarness.asyncSleeper = null;
     DocHarness.storage = null;
   }
 

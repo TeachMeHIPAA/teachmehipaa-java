@@ -6,6 +6,7 @@ import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
 import com.teachmehipaa.model.CertificateVerification;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 /** Certificate verifications. Reach it through {@code client.certificateVerifications()}. */
 public final class CertificateVerificationService {
@@ -42,5 +43,35 @@ public final class CertificateVerificationService {
             .retrySafe()
             .build();
     return requester.request(request, CertificateVerification.class, options);
+  }
+
+  /** Verify a certificate. */
+  public CompletableFuture<CertificateVerification> retrieveAsync(String tinyId) {
+    return retrieveAsync(tinyId, RequestOptions.none());
+  }
+
+  /**
+   * Verify a certificate.
+   *
+   * <p>The asynchronous form of {@link #retrieve(String, RequestOptions)}: it sends the same
+   * request, with the same retries, without blocking the calling thread. The future fails with the
+   * {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param tinyId The id at the end of the certificate's tme.so link.
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link CertificateVerification}
+   */
+  public CompletableFuture<CertificateVerification> retrieveAsync(
+      String tinyId, RequestOptions options) {
+    Objects.requireNonNull(tinyId, "tinyId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/certificate-verifications/{tinyId}")
+            .pathParam("tinyId", tinyId)
+            .unauthenticated()
+            .retrySafe()
+            .build();
+    return requester.requestAsync(request, CertificateVerification.class, options);
   }
 }
