@@ -3,8 +3,10 @@ package com.teachmehipaa.model;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.teachmehipaa.core.Async;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * An Operation from {@code client.webhookSubscriptions().test} or {@code .redrive}. Once it is
@@ -52,6 +54,18 @@ public final class WebhookDeliveryOperation extends Operation {
   @Override
   public WebhookDeliveryOperation waitForCompletion(Duration timeout, Duration interval) {
     return (WebhookDeliveryOperation) super.waitForCompletion(timeout, interval);
+  }
+
+  @Override
+  public CompletableFuture<WebhookDeliveryOperation> waitForCompletionAsync() {
+    return Async.map(super.waitForCompletionAsync(), WebhookDeliveryOperation.class::cast);
+  }
+
+  @Override
+  public CompletableFuture<WebhookDeliveryOperation> waitForCompletionAsync(
+      Duration timeout, Duration interval) {
+    return Async.map(
+        super.waitForCompletionAsync(timeout, interval), WebhookDeliveryOperation.class::cast);
   }
 
   /** Reads a done Operation's response; a known tag missing a field it needs reads as unknown. */

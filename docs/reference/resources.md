@@ -6,6 +6,8 @@ Every service and method of `TeachMeHipaaClient`: 13 services and 45 API methods
 
 Reach a service from the client, such as `client.learners()`. Each method takes the path ids first, then its `…Params` (built with `builder()`), then [`RequestOptions`](../guides/errors-and-retries.md#request-options); the shorter overloads leave out what is optional. Every returned object has `getLastResponse()`. Paths are relative to the Environment's base URL (Live is `https://api.tme.so/v1`; Sandbox is `https://api-teachmehipaa-dev.web.app/v1`). The client fills in `{orgId}` from its [Organization binding](../guides/authentication.md#the-organization-binding).
 
+Each method has an `…Async` twin with the same overloads, listed after it, that returns a `CompletableFuture` of the same type without blocking the calling thread. See [Async calls](../guides/async.md).
+
 ## Contents
 
 - [`auditEvents()`](#auditevents): [`list`](#auditeventslist)
@@ -51,6 +53,10 @@ Page<AuditEvent> list()
 Page<AuditEvent> list(RequestOptions options)
 Page<AuditEvent> list(AuditEventListParams params)
 Page<AuditEvent> list(AuditEventListParams params, RequestOptions options)
+CompletableFuture<Page<AuditEvent>> listAsync()
+CompletableFuture<Page<AuditEvent>> listAsync(RequestOptions options)
+CompletableFuture<Page<AuditEvent>> listAsync(AuditEventListParams params)
+CompletableFuture<Page<AuditEvent>> listAsync(AuditEventListParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -74,6 +80,8 @@ Describes the access token you call with: whether it belongs to an API client or
 ```java
 TokenIntrospection introspect()
 TokenIntrospection introspect(RequestOptions options)
+CompletableFuture<TokenIntrospection> introspectAsync()
+CompletableFuture<TokenIntrospection> introspectAsync(RequestOptions options)
 ```
 
 |  |  |
@@ -96,6 +104,8 @@ Verifies the certificate behind a `https://tme.so/{tinyId}` link. Needs no acces
 ```java
 CertificateVerification retrieve(String tinyId)
 CertificateVerification retrieve(String tinyId, RequestOptions options)
+CompletableFuture<CertificateVerification> retrieveAsync(String tinyId)
+CompletableFuture<CertificateVerification> retrieveAsync(String tinyId, RequestOptions options)
 ```
 
 |  |  |
@@ -120,6 +130,10 @@ BinaryResponse downloadPdf(String certId)
 BinaryResponse downloadPdf(String certId, RequestOptions options)
 BinaryStreamResponse downloadPdfStream(String certId)
 BinaryStreamResponse downloadPdfStream(String certId, RequestOptions options)
+CompletableFuture<BinaryResponse> downloadPdfAsync(String certId)
+CompletableFuture<BinaryResponse> downloadPdfAsync(String certId, RequestOptions options)
+CompletableFuture<BinaryStreamResponse> downloadPdfStreamAsync(String certId)
+CompletableFuture<BinaryStreamResponse> downloadPdfStreamAsync(String certId, RequestOptions options)
 ```
 
 |  |  |
@@ -141,6 +155,8 @@ Exports the organization's certificate records as CSV. Requires the `certificate
 ```java
 Operation export(CertificateExportParams params)
 Operation export(CertificateExportParams params, RequestOptions options)
+CompletableFuture<Operation> exportAsync(CertificateExportParams params)
+CompletableFuture<Operation> exportAsync(CertificateExportParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -164,6 +180,10 @@ Page<Certificate> list()
 Page<Certificate> list(RequestOptions options)
 Page<Certificate> list(CertificateListParams params)
 Page<Certificate> list(CertificateListParams params, RequestOptions options)
+CompletableFuture<Page<Certificate>> listAsync()
+CompletableFuture<Page<Certificate>> listAsync(RequestOptions options)
+CompletableFuture<Page<Certificate>> listAsync(CertificateListParams params)
+CompletableFuture<Page<Certificate>> listAsync(CertificateListParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -185,6 +205,8 @@ Retrieves a certificate.
 ```java
 Certificate retrieve(String certId)
 Certificate retrieve(String certId, RequestOptions options)
+CompletableFuture<Certificate> retrieveAsync(String certId)
+CompletableFuture<Certificate> retrieveAsync(String certId, RequestOptions options)
 ```
 
 |  |  |
@@ -205,6 +227,8 @@ Retrieves the certificate's LinkedIn add-to-profile link and its public `tme.so`
 ```java
 CertificateLinks retrieveLinks(String certId)
 CertificateLinks retrieveLinks(String certId, RequestOptions options)
+CompletableFuture<CertificateLinks> retrieveLinksAsync(String certId)
+CompletableFuture<CertificateLinks> retrieveLinksAsync(String certId, RequestOptions options)
 ```
 
 |  |  |
@@ -229,6 +253,10 @@ ComplianceSummary retrieve()
 ComplianceSummary retrieve(RequestOptions options)
 ComplianceSummary retrieve(ComplianceRetrieveParams params)
 ComplianceSummary retrieve(ComplianceRetrieveParams params, RequestOptions options)
+CompletableFuture<ComplianceSummary> retrieveAsync()
+CompletableFuture<ComplianceSummary> retrieveAsync(RequestOptions options)
+CompletableFuture<ComplianceSummary> retrieveAsync(ComplianceRetrieveParams params)
+CompletableFuture<ComplianceSummary> retrieveAsync(ComplianceRetrieveParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -253,6 +281,10 @@ Page<Course> list()
 Page<Course> list(RequestOptions options)
 Page<Course> list(CourseListParams params)
 Page<Course> list(CourseListParams params, RequestOptions options)
+CompletableFuture<Page<Course>> listAsync()
+CompletableFuture<Page<Course>> listAsync(RequestOptions options)
+CompletableFuture<Page<Course>> listAsync(CourseListParams params)
+CompletableFuture<Page<Course>> listAsync(CourseListParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -278,6 +310,12 @@ Optional<Course> retrieveIfModified(String courseId, String etag)
 Optional<Course> retrieveIfModified(String courseId, Course cached)
 Optional<Course> retrieveIfModified(String courseId, Course cached, RequestOptions options)
 Optional<Course> retrieveIfModified(String courseId, String etag, RequestOptions options)
+CompletableFuture<Course> retrieveAsync(String courseId)
+CompletableFuture<Course> retrieveAsync(String courseId, RequestOptions options)
+CompletableFuture<Optional<Course>> retrieveIfModifiedAsync(String courseId, String etag)
+CompletableFuture<Optional<Course>> retrieveIfModifiedAsync(String courseId, Course cached)
+CompletableFuture<Optional<Course>> retrieveIfModifiedAsync(String courseId, Course cached, RequestOptions options)
+CompletableFuture<Optional<Course>> retrieveIfModifiedAsync(String courseId, String etag, RequestOptions options)
 ```
 
 |  |  |
@@ -301,6 +339,8 @@ Reminds, resends, cancels, renews, archives or unarchives up to 500 enrollments 
 ```java
 EnrollmentsBatchResults batch(EnrollmentBatchParams params)
 EnrollmentsBatchResults batch(EnrollmentBatchParams params, RequestOptions options)
+CompletableFuture<EnrollmentsBatchResults> batchAsync(EnrollmentBatchParams params)
+CompletableFuture<EnrollmentsBatchResults> batchAsync(EnrollmentBatchParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -321,6 +361,8 @@ Reminds, resends, cancels, renews, archives or unarchives up to 500 enrollments 
 ```java
 Operation batchByFilter(EnrollmentBatchByFilterParams params)
 Operation batchByFilter(EnrollmentBatchByFilterParams params, RequestOptions options)
+CompletableFuture<Operation> batchByFilterAsync(EnrollmentBatchByFilterParams params)
+CompletableFuture<Operation> batchByFilterAsync(EnrollmentBatchByFilterParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -344,6 +386,10 @@ CancelEnrollmentResponse cancel(String enrollmentId)
 CancelEnrollmentResponse cancel(String enrollmentId, RequestOptions options)
 CancelEnrollmentResponse cancel(String enrollmentId, EnrollmentCancelParams params)
 CancelEnrollmentResponse cancel(String enrollmentId, EnrollmentCancelParams params, RequestOptions options)
+CompletableFuture<CancelEnrollmentResponse> cancelAsync(String enrollmentId)
+CompletableFuture<CancelEnrollmentResponse> cancelAsync(String enrollmentId, RequestOptions options)
+CompletableFuture<CancelEnrollmentResponse> cancelAsync(String enrollmentId, EnrollmentCancelParams params)
+CompletableFuture<CancelEnrollmentResponse> cancelAsync(String enrollmentId, EnrollmentCancelParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -364,6 +410,8 @@ Invites a person to a course, creating their profile if needed, and uses one sea
 ```java
 Enrollment create(EnrollmentCreateParams params)
 Enrollment create(EnrollmentCreateParams params, RequestOptions options)
+CompletableFuture<Enrollment> createAsync(EnrollmentCreateParams params)
+CompletableFuture<Enrollment> createAsync(EnrollmentCreateParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -384,6 +432,8 @@ Exports the organization's enrollments as CSV. Requires the `enrollments:read` s
 ```java
 Operation export(EnrollmentExportParams params)
 Operation export(EnrollmentExportParams params, RequestOptions options)
+CompletableFuture<Operation> exportAsync(EnrollmentExportParams params)
+CompletableFuture<Operation> exportAsync(EnrollmentExportParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -405,6 +455,8 @@ Invites everyone in a CSV file with an `email` column (and optional `name` and `
 ```java
 Operation importEnrollments(EnrollmentImportParams params)
 Operation importEnrollments(EnrollmentImportParams params, RequestOptions options)
+CompletableFuture<Operation> importEnrollmentsAsync(EnrollmentImportParams params)
+CompletableFuture<Operation> importEnrollmentsAsync(EnrollmentImportParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -428,6 +480,10 @@ Page<OrgEnrollmentListItem> list()
 Page<OrgEnrollmentListItem> list(RequestOptions options)
 Page<OrgEnrollmentListItem> list(EnrollmentListParams params)
 Page<OrgEnrollmentListItem> list(EnrollmentListParams params, RequestOptions options)
+CompletableFuture<Page<OrgEnrollmentListItem>> listAsync()
+CompletableFuture<Page<OrgEnrollmentListItem>> listAsync(RequestOptions options)
+CompletableFuture<Page<OrgEnrollmentListItem>> listAsync(EnrollmentListParams params)
+CompletableFuture<Page<OrgEnrollmentListItem>> listAsync(EnrollmentListParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -449,6 +505,8 @@ Invites everyone in a CSV file with an `email` column (and optional `name` and `
 ```java
 ImportPreview previewImport(EnrollmentPreviewImportParams params)
 ImportPreview previewImport(EnrollmentPreviewImportParams params, RequestOptions options)
+CompletableFuture<ImportPreview> previewImportAsync(EnrollmentPreviewImportParams params)
+CompletableFuture<ImportPreview> previewImportAsync(EnrollmentPreviewImportParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -469,6 +527,8 @@ Emails the learner again: the invitation if they haven't joined, or a reminder l
 ```java
 EnrollmentActionAccepted remind(String enrollmentId)
 EnrollmentActionAccepted remind(String enrollmentId, RequestOptions options)
+CompletableFuture<EnrollmentActionAccepted> remindAsync(String enrollmentId)
+CompletableFuture<EnrollmentActionAccepted> remindAsync(String enrollmentId, RequestOptions options)
 ```
 
 |  |  |
@@ -489,6 +549,8 @@ Starts the next certification cycle for a certified learner and invites them aga
 ```java
 Enrollment renew(String enrollmentId)
 Enrollment renew(String enrollmentId, RequestOptions options)
+CompletableFuture<Enrollment> renewAsync(String enrollmentId)
+CompletableFuture<Enrollment> renewAsync(String enrollmentId, RequestOptions options)
 ```
 
 |  |  |
@@ -509,6 +571,8 @@ Sends a pending invite again, within the same cycle. To invite a certified learn
 ```java
 EnrollmentActionAccepted resendInvite(String enrollmentId)
 EnrollmentActionAccepted resendInvite(String enrollmentId, RequestOptions options)
+CompletableFuture<EnrollmentActionAccepted> resendInviteAsync(String enrollmentId)
+CompletableFuture<EnrollmentActionAccepted> resendInviteAsync(String enrollmentId, RequestOptions options)
 ```
 
 |  |  |
@@ -533,6 +597,12 @@ Optional<Enrollment> retrieveIfModified(String enrollmentId, String etag)
 Optional<Enrollment> retrieveIfModified(String enrollmentId, Enrollment cached)
 Optional<Enrollment> retrieveIfModified(String enrollmentId, Enrollment cached, RequestOptions options)
 Optional<Enrollment> retrieveIfModified(String enrollmentId, String etag, RequestOptions options)
+CompletableFuture<Enrollment> retrieveAsync(String enrollmentId)
+CompletableFuture<Enrollment> retrieveAsync(String enrollmentId, RequestOptions options)
+CompletableFuture<Optional<Enrollment>> retrieveIfModifiedAsync(String enrollmentId, String etag)
+CompletableFuture<Optional<Enrollment>> retrieveIfModifiedAsync(String enrollmentId, Enrollment cached)
+CompletableFuture<Optional<Enrollment>> retrieveIfModifiedAsync(String enrollmentId, Enrollment cached, RequestOptions options)
+CompletableFuture<Optional<Enrollment>> retrieveIfModifiedAsync(String enrollmentId, String etag, RequestOptions options)
 ```
 
 |  |  |
@@ -560,6 +630,10 @@ Page<Event> list()
 Page<Event> list(RequestOptions options)
 Page<Event> list(EventListParams params)
 Page<Event> list(EventListParams params, RequestOptions options)
+CompletableFuture<Page<Event>> listAsync()
+CompletableFuture<Page<Event>> listAsync(RequestOptions options)
+CompletableFuture<Page<Event>> listAsync(EventListParams params)
+CompletableFuture<Page<Event>> listAsync(EventListParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -583,6 +657,8 @@ Creates or retrieves up to 500 learners in one request. Each item works like cre
 ```java
 Operation batchUpsert(LearnerBatchUpsertParams params)
 Operation batchUpsert(LearnerBatchUpsertParams params, RequestOptions options)
+CompletableFuture<Operation> batchUpsertAsync(LearnerBatchUpsertParams params)
+CompletableFuture<Operation> batchUpsertAsync(LearnerBatchUpsertParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -604,6 +680,8 @@ Adds a person to the organization and invites them to a course in one call, usin
 ```java
 LearnerWriteResult create(LearnerCreateParams params)
 LearnerWriteResult create(LearnerCreateParams params, RequestOptions options)
+CompletableFuture<LearnerWriteResult> createAsync(LearnerCreateParams params)
+CompletableFuture<LearnerWriteResult> createAsync(LearnerCreateParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -626,6 +704,10 @@ LearnerLaunchLink createLaunchLink(String learnerId)
 LearnerLaunchLink createLaunchLink(String learnerId, RequestOptions options)
 LearnerLaunchLink createLaunchLink(String learnerId, LearnerCreateLaunchLinkParams params)
 LearnerLaunchLink createLaunchLink(String learnerId, LearnerCreateLaunchLinkParams params, RequestOptions options)
+CompletableFuture<LearnerLaunchLink> createLaunchLinkAsync(String learnerId)
+CompletableFuture<LearnerLaunchLink> createLaunchLinkAsync(String learnerId, RequestOptions options)
+CompletableFuture<LearnerLaunchLink> createLaunchLinkAsync(String learnerId, LearnerCreateLaunchLinkParams params)
+CompletableFuture<LearnerLaunchLink> createLaunchLinkAsync(String learnerId, LearnerCreateLaunchLinkParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -646,6 +728,8 @@ Exports the organization's learners in one course as CSV, optionally only those 
 ```java
 Operation export(LearnerExportParams params)
 Operation export(LearnerExportParams params, RequestOptions options)
+CompletableFuture<Operation> exportAsync(LearnerExportParams params)
+CompletableFuture<Operation> exportAsync(LearnerExportParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -669,6 +753,10 @@ Page<Learner> list()
 Page<Learner> list(RequestOptions options)
 Page<Learner> list(LearnerListParams params)
 Page<Learner> list(LearnerListParams params, RequestOptions options)
+CompletableFuture<Page<Learner>> listAsync()
+CompletableFuture<Page<Learner>> listAsync(RequestOptions options)
+CompletableFuture<Page<Learner>> listAsync(LearnerListParams params)
+CompletableFuture<Page<Learner>> listAsync(LearnerListParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -692,6 +780,10 @@ Learner offboard(String learnerId)
 Learner offboard(String learnerId, RequestOptions options)
 Learner offboard(String learnerId, LearnerOffboardParams params)
 Learner offboard(String learnerId, LearnerOffboardParams params, RequestOptions options)
+CompletableFuture<Learner> offboardAsync(String learnerId)
+CompletableFuture<Learner> offboardAsync(String learnerId, RequestOptions options)
+CompletableFuture<Learner> offboardAsync(String learnerId, LearnerOffboardParams params)
+CompletableFuture<Learner> offboardAsync(String learnerId, LearnerOffboardParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -715,6 +807,10 @@ LearnerRemindAccepted remind(String learnerId)
 LearnerRemindAccepted remind(String learnerId, RequestOptions options)
 LearnerRemindAccepted remind(String learnerId, LearnerRemindParams params)
 LearnerRemindAccepted remind(String learnerId, LearnerRemindParams params, RequestOptions options)
+CompletableFuture<LearnerRemindAccepted> remindAsync(String learnerId)
+CompletableFuture<LearnerRemindAccepted> remindAsync(String learnerId, RequestOptions options)
+CompletableFuture<LearnerRemindAccepted> remindAsync(String learnerId, LearnerRemindParams params)
+CompletableFuture<LearnerRemindAccepted> remindAsync(String learnerId, LearnerRemindParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -737,6 +833,10 @@ Learner retrieve(String learnerId)
 Learner retrieve(String learnerId, RequestOptions options)
 Learner retrieve(String learnerId, LearnerRetrieveParams params)
 Learner retrieve(String learnerId, LearnerRetrieveParams params, RequestOptions options)
+CompletableFuture<Learner> retrieveAsync(String learnerId)
+CompletableFuture<Learner> retrieveAsync(String learnerId, RequestOptions options)
+CompletableFuture<Learner> retrieveAsync(String learnerId, LearnerRetrieveParams params)
+CompletableFuture<Learner> retrieveAsync(String learnerId, LearnerRetrieveParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -757,6 +857,8 @@ Updates a learner's `name` or `externalId`; parameters you don't send are left u
 ```java
 Learner update(String learnerId, LearnerUpdateParams params)
 Learner update(String learnerId, LearnerUpdateParams params, RequestOptions options)
+CompletableFuture<Learner> updateAsync(String learnerId, LearnerUpdateParams params)
+CompletableFuture<Learner> updateAsync(String learnerId, LearnerUpdateParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -778,6 +880,8 @@ Makes sure a learner exists for your own id. Creates and invites the learner the
 ```java
 LearnerWriteResult upsertByExternalId(String externalId, LearnerUpsertByExternalIdParams params)
 LearnerWriteResult upsertByExternalId(String externalId, LearnerUpsertByExternalIdParams params, RequestOptions options)
+CompletableFuture<LearnerWriteResult> upsertByExternalIdAsync(String externalId, LearnerUpsertByExternalIdParams params)
+CompletableFuture<LearnerWriteResult> upsertByExternalIdAsync(String externalId, LearnerUpsertByExternalIdParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -802,6 +906,10 @@ Page<MemberListItem> list()
 Page<MemberListItem> list(RequestOptions options)
 Page<MemberListItem> list(MemberListParams params)
 Page<MemberListItem> list(MemberListParams params, RequestOptions options)
+CompletableFuture<Page<MemberListItem>> listAsync()
+CompletableFuture<Page<MemberListItem>> listAsync(RequestOptions options)
+CompletableFuture<Page<MemberListItem>> listAsync(MemberListParams params)
+CompletableFuture<Page<MemberListItem>> listAsync(MemberListParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -823,6 +931,8 @@ Retrieves a member of the organization.
 ```java
 Member retrieve(String subjectId)
 Member retrieve(String subjectId, RequestOptions options)
+CompletableFuture<Member> retrieveAsync(String subjectId)
+CompletableFuture<Member> retrieveAsync(String subjectId, RequestOptions options)
 ```
 
 |  |  |
@@ -845,6 +955,8 @@ Retrieves a bulk operation and its result. Operations are kept for 24 hours.
 ```java
 Operation retrieve(String operationId)
 Operation retrieve(String operationId, RequestOptions options)
+CompletableFuture<Operation> retrieveAsync(String operationId)
+CompletableFuture<Operation> retrieveAsync(String operationId, RequestOptions options)
 ```
 
 |  |  |
@@ -868,6 +980,8 @@ Retrieves how many seats the organization has, how many are assigned and how man
 ```java
 SeatsInventory retrieve()
 SeatsInventory retrieve(RequestOptions options)
+CompletableFuture<SeatsInventory> retrieveAsync()
+CompletableFuture<SeatsInventory> retrieveAsync(RequestOptions options)
 ```
 
 |  |  |
@@ -890,6 +1004,8 @@ Subscribes an HTTPS endpoint to event types and creates its signing secret. Requ
 ```java
 WebhookSubscriptionCreated create(WebhookSubscriptionCreateParams params)
 WebhookSubscriptionCreated create(WebhookSubscriptionCreateParams params, RequestOptions options)
+CompletableFuture<WebhookSubscriptionCreated> createAsync(WebhookSubscriptionCreateParams params)
+CompletableFuture<WebhookSubscriptionCreated> createAsync(WebhookSubscriptionCreateParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -910,6 +1026,8 @@ Deletes a webhook subscription and its signing secret. Requires the `webhooks:ma
 ```java
 EmptyResponse delete(String subscriptionId)
 EmptyResponse delete(String subscriptionId, RequestOptions options)
+CompletableFuture<EmptyResponse> deleteAsync(String subscriptionId)
+CompletableFuture<EmptyResponse> deleteAsync(String subscriptionId, RequestOptions options)
 ```
 
 |  |  |
@@ -932,6 +1050,10 @@ Page<WebhookSubscription> list()
 Page<WebhookSubscription> list(RequestOptions options)
 Page<WebhookSubscription> list(WebhookSubscriptionListParams params)
 Page<WebhookSubscription> list(WebhookSubscriptionListParams params, RequestOptions options)
+CompletableFuture<Page<WebhookSubscription>> listAsync()
+CompletableFuture<Page<WebhookSubscription>> listAsync(RequestOptions options)
+CompletableFuture<Page<WebhookSubscription>> listAsync(WebhookSubscriptionListParams params)
+CompletableFuture<Page<WebhookSubscription>> listAsync(WebhookSubscriptionListParams params, RequestOptions options)
 ```
 
 |  |  |
@@ -953,6 +1075,8 @@ Delivers the subscription's failed events again. Requires the `webhooks:manage` 
 ```java
 WebhookDeliveryOperation redrive(String subscriptionId)
 WebhookDeliveryOperation redrive(String subscriptionId, RequestOptions options)
+CompletableFuture<WebhookDeliveryOperation> redriveAsync(String subscriptionId)
+CompletableFuture<WebhookDeliveryOperation> redriveAsync(String subscriptionId, RequestOptions options)
 ```
 
 |  |  |
@@ -978,6 +1102,12 @@ Optional<WebhookSubscription> retrieveIfModified(String subscriptionId, String e
 Optional<WebhookSubscription> retrieveIfModified(String subscriptionId, WebhookSubscription cached)
 Optional<WebhookSubscription> retrieveIfModified(String subscriptionId, WebhookSubscription cached, RequestOptions options)
 Optional<WebhookSubscription> retrieveIfModified(String subscriptionId, String etag, RequestOptions options)
+CompletableFuture<WebhookSubscription> retrieveAsync(String subscriptionId)
+CompletableFuture<WebhookSubscription> retrieveAsync(String subscriptionId, RequestOptions options)
+CompletableFuture<Optional<WebhookSubscription>> retrieveIfModifiedAsync(String subscriptionId, String etag)
+CompletableFuture<Optional<WebhookSubscription>> retrieveIfModifiedAsync(String subscriptionId, WebhookSubscription cached)
+CompletableFuture<Optional<WebhookSubscription>> retrieveIfModifiedAsync(String subscriptionId, WebhookSubscription cached, RequestOptions options)
+CompletableFuture<Optional<WebhookSubscription>> retrieveIfModifiedAsync(String subscriptionId, String etag, RequestOptions options)
 ```
 
 |  |  |
@@ -999,6 +1129,8 @@ Sends a signed test delivery to the subscription's endpoint, so you can check yo
 ```java
 WebhookDeliveryOperation test(String subscriptionId)
 WebhookDeliveryOperation test(String subscriptionId, RequestOptions options)
+CompletableFuture<WebhookDeliveryOperation> testAsync(String subscriptionId)
+CompletableFuture<WebhookDeliveryOperation> testAsync(String subscriptionId, RequestOptions options)
 ```
 
 |  |  |
@@ -1020,6 +1152,8 @@ Updates a webhook subscription; parameters you don't send are left unchanged. Se
 ```java
 WebhookSubscription update(String subscriptionId, WebhookSubscriptionUpdateParams params)
 WebhookSubscription update(String subscriptionId, WebhookSubscriptionUpdateParams params, RequestOptions options)
+CompletableFuture<WebhookSubscription> updateAsync(String subscriptionId, WebhookSubscriptionUpdateParams params)
+CompletableFuture<WebhookSubscription> updateAsync(String subscriptionId, WebhookSubscriptionUpdateParams params, RequestOptions options)
 ```
 
 |  |  |

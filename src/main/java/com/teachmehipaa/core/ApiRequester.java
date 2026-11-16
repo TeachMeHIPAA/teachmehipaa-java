@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -42,6 +44,8 @@ public final class ApiRequester {
   private final ClientConfig config;
   private final TokenProvider tokens;
   private final ReentrantLock organizationLock = new ReentrantLock();
+  private final AtomicReference<CompletableFuture<String>> organizationLookup =
+      new AtomicReference<>();
   private volatile String organizationId;
 
   public ApiRequester(ClientConfig config, TokenProvider tokens) {
@@ -53,6 +57,11 @@ public final class ApiRequester {
   /** Waits between polls, as between retries: the client's injected {@link Sleeper}. */
   public Sleeper sleeper() {
     return config.sleeper();
+  }
+
+  /** Waits between async polls, as between async retries: the client's {@link AsyncSleeper}. */
+  public AsyncSleeper asyncSleeper() {
+    return config.asyncSleeper();
   }
 
   /** Tells the time for poll deadlines: the client's injected {@link Clock}. */
@@ -71,13 +80,34 @@ public final class ApiRequester {
   }
 
   /**
+   * As {@link #request}, without blocking. The future fails with the exception {@link #request}
+   * would throw, and cancelling it stops the call and its retries.
+   */
+  public <T> CompletableFuture<T> requestAsync(
+      ApiRequest request, Class<T> type, RequestOptions options) {
+    return Async.map(
+        sendAsync(request, options, JSON),
+        response -> read(response, Json.MAPPER.constructType(type)));
+  }
+
+  /**
    * Sends a Learner create or upsert and reads the Learner into {@code type}, with {@code created}
    * set from the status: 201 when this call created the Learner, 200 when it already existed.
    *
    * @throws com.teachmehipaa.exception.TeachMeHipaaException when the call fails
    */
   public <T> T requestWriteResult(ApiRequest request, Class<T> type, RequestOptions options) {
-    TransportResponse response = send(request, options, JSON);
+    return readWriteResult(send(request, options, JSON), type);
+  }
+
+  /** As {@link #requestWriteResult}, without blocking. */
+  public <T> CompletableFuture<T> requestWriteResultAsync(
+      ApiRequest request, Class<T> type, RequestOptions options) {
+    return Async.map(
+        sendAsync(request, options, JSON), response -> readWriteResult(response, type));
+  }
+
+  private <T> T readWriteResult(TransportResponse response, Class<T> type) {
     JsonNode tree = readTree(response);
     if (!(tree instanceof ObjectNode learner)) {
       throw Errors.fromResponse(response, config.clock().instant());
@@ -101,7 +131,26 @@ public final class ApiRequester {
    */
   public <T> Page<T> requestPage(
       ApiRequest request, Pagination pagination, Class<T> itemType, RequestOptions options) {
-    TransportResponse response = send(request, options, JSON);
+    return readPage(send(request, options, JSON), request, pagination, itemType, options);
+  }
+
+  /**
+   * As {@link #requestPage}, without blocking. The page can fetch the next one either way: {@code
+   * nextPage()} or {@code nextPageAsync()}.
+   */
+  public <T> CompletableFuture<Page<T>> requestPageAsync(
+      ApiRequest request, Pagination pagination, Class<T> itemType, RequestOptions options) {
+    return Async.map(
+        sendAsync(request, options, JSON),
+        response -> readPage(response, request, pagination, itemType, options));
+  }
+
+  private <T> Page<T> readPage(
+      TransportResponse response,
+      ApiRequest request,
+      Pagination pagination,
+      Class<T> itemType,
+      RequestOptions options) {
     JsonNode tree = readTree(response);
     PageBody<T> body;
     try {
@@ -130,6 +179,12 @@ public final class ApiRequester {
                 request.withQueryParam(pagination.cursorParam(), position),
                 pagination,
                 itemType,
+                options),
+        () ->
+            requestPageAsync(
+                request.withQueryParam(pagination.cursorParam(), position),
+                pagination,
+                itemType,
                 options));
   }
 
@@ -142,7 +197,18 @@ public final class ApiRequester {
    */
   public <T> Optional<T> requestIfModified(
       ApiRequest request, Class<T> type, RequestOptions options) {
-    TransportResponse response = send(request, options, JSON_OR_NOT_MODIFIED);
+    return readIfModified(send(request, options, JSON_OR_NOT_MODIFIED), type);
+  }
+
+  /** As {@link #requestIfModified}, without blocking. */
+  public <T> CompletableFuture<Optional<T>> requestIfModifiedAsync(
+      ApiRequest request, Class<T> type, RequestOptions options) {
+    return Async.map(
+        sendAsync(request, options, JSON_OR_NOT_MODIFIED),
+        response -> readIfModified(response, type));
+  }
+
+  private <T> Optional<T> readIfModified(TransportResponse response, Class<T> type) {
     if (response.statusCode() == 304) {
       return Optional.empty();
     }
@@ -158,6 +224,14 @@ public final class ApiRequester {
     return new EmptyResponse(LastResponse.of(send(request, options, JSON_OR_EMPTY)));
   }
 
+  /** As {@link #requestEmpty}, without blocking. */
+  public CompletableFuture<EmptyResponse> requestEmptyAsync(
+      ApiRequest request, RequestOptions options) {
+    return Async.map(
+        sendAsync(request, options, JSON_OR_EMPTY),
+        response -> new EmptyResponse(LastResponse.of(response)));
+  }
+
   /**
    * Sends a download request and returns the file's bytes as received. A success of any other media
    * type, such as an HTML page, raises.
@@ -167,14 +241,22 @@ public final class ApiRequester {
    */
   public BinaryResponse requestBinary(
       ApiRequest request, String mediaType, RequestOptions options) {
-    TransportResponse response =
-        send(
-            download(request, mediaType),
-            options,
-            candidate ->
-                Errors.isSuccess(candidate.statusCode())
-                    && Errors.hasMediaType(candidate.headers(), mediaType));
+    TransportResponse response = send(download(request, mediaType), options, file(mediaType));
     return new BinaryResponse(response.body(), LastResponse.of(response));
+  }
+
+  /** As {@link #requestBinary}, without blocking. */
+  public CompletableFuture<BinaryResponse> requestBinaryAsync(
+      ApiRequest request, String mediaType, RequestOptions options) {
+    return Async.map(
+        sendAsync(download(request, mediaType), options, file(mediaType)),
+        response -> new BinaryResponse(response.body(), LastResponse.of(response)));
+  }
+
+  private static Predicate<TransportResponse> file(String mediaType) {
+    return response ->
+        Errors.isSuccess(response.statusCode())
+            && Errors.hasMediaType(response.headers(), mediaType);
   }
 
   /**
@@ -194,6 +276,22 @@ public final class ApiRequester {
             authorized -> exchangeStreaming(authorized, mediaType));
     return new BinaryStreamResponse(
         response.body(), LastResponse.of(response.statusCode(), response.headers()));
+  }
+
+  /**
+   * As {@link #requestBinaryStream}, without blocking: the future completes once the headers
+   * arrive, with the body still to be read.
+   */
+  public CompletableFuture<BinaryStreamResponse> requestBinaryStreamAsync(
+      ApiRequest request, String mediaType, RequestOptions options) {
+    return Async.map(
+        sendViaAsync(
+            download(request, mediaType),
+            options,
+            authorized -> exchangeStreamingAsync(authorized, mediaType)),
+        response ->
+            new BinaryStreamResponse(
+                response.body(), LastResponse.of(response.statusCode(), response.headers())));
   }
 
   // A failed download answers with a problem document, so the API may send either.
@@ -263,9 +361,46 @@ public final class ApiRequester {
   }
 
   private String discoverOrganizationId() {
-    TransportResponse response =
+    return organizationIdIn(
         sendVia(
-            INTROSPECTION, null, RequestOptions.none(), authorized -> exchange(authorized, JSON));
+            INTROSPECTION, null, RequestOptions.none(), authorized -> exchange(authorized, JSON)));
+  }
+
+  // As organizationId(): one lookup at a time, shared by its concurrent callers, and a failed one
+  // is not cached. A caller that cancels leaves the lookup running for the others.
+  private CompletableFuture<String> organizationIdAsync() {
+    String known = organizationId;
+    if (known != null) {
+      return CompletableFuture.completedFuture(known);
+    }
+    CompletableFuture<String> claim = new CompletableFuture<>();
+    CompletableFuture<String> shared = organizationLookup.compareAndExchange(null, claim);
+    if (shared == null) {
+      shared = claim;
+      Async.map(
+              sendViaAsync(
+                  INTROSPECTION,
+                  null,
+                  RequestOptions.none(),
+                  authorized -> exchangeAsync(authorized, JSON)),
+              this::organizationIdIn)
+          .whenComplete(
+              (orgId, failure) -> {
+                if (failure == null) {
+                  organizationId = orgId;
+                }
+                organizationLookup.set(null);
+                if (failure == null) {
+                  claim.complete(orgId);
+                } else {
+                  claim.completeExceptionally(Async.unwrap(failure));
+                }
+              });
+    }
+    return Async.detached(shared);
+  }
+
+  private String organizationIdIn(TransportResponse response) {
     JsonNode orgId = readTree(response).path("orgId");
     if (!orgId.isTextual() || orgId.asText().isEmpty()) {
       throw Errors.unexpected(
@@ -314,6 +449,107 @@ public final class ApiRequester {
             failure);
         retryNumber++;
       }
+    }
+  }
+
+  private CompletableFuture<TransportResponse> sendAsync(
+      ApiRequest request, RequestOptions options, Predicate<TransportResponse> usable) {
+    return sendViaAsync(request, options, authorized -> exchangeAsync(authorized, usable));
+  }
+
+  private <R> CompletableFuture<R> sendViaAsync(
+      ApiRequest request,
+      RequestOptions options,
+      Function<TransportRequest, CompletableFuture<R>> exchange) {
+    if (!request.organizationScoped()) {
+      return sendViaAsync(request, null, options, exchange);
+    }
+    return Async.compose(
+        organizationIdAsync(),
+        organizationId -> sendViaAsync(request, organizationId, options, exchange));
+  }
+
+  // The loop of sendVia(), one step per completed future: the same token replay, retry rules and
+  // schedule, with the waits on the async sleeper.
+  private <R> CompletableFuture<R> sendViaAsync(
+      ApiRequest request,
+      String organizationId,
+      RequestOptions options,
+      Function<TransportRequest, CompletableFuture<R>> exchange) {
+    TransportRequest prepared;
+    try {
+      prepared = prepare(request, organizationId, options);
+    } catch (RuntimeException unsendable) {
+      return CompletableFuture.failedFuture(unsendable);
+    }
+    int maxRetries =
+        options.getMaxRetries() == null ? config.maxRetries() : options.getMaxRetries();
+    Async.Loop<R> loop = new Async.Loop<>();
+    new AsyncAttempts<>(loop, request, prepared, maxRetries, exchange).attempt(false, 1);
+    return loop.result();
+  }
+
+  private final class AsyncAttempts<R> {
+    private final Async.Loop<R> loop;
+    private final ApiRequest request;
+    private final TransportRequest prepared;
+    private final int maxRetries;
+    private final Function<TransportRequest, CompletableFuture<R>> exchange;
+
+    AsyncAttempts(
+        Async.Loop<R> loop,
+        ApiRequest request,
+        TransportRequest prepared,
+        int maxRetries,
+        Function<TransportRequest, CompletableFuture<R>> exchange) {
+      this.loop = loop;
+      this.request = request;
+      this.prepared = prepared;
+      this.maxRetries = maxRetries;
+      this.exchange = exchange;
+    }
+
+    void attempt(boolean replayed, int retryNumber) {
+      // A failed mint fails the call: the token provider alone decides whether to retry it.
+      loop.await(
+          request.authenticated()
+              ? tokens.accessTokenAsync()
+              : CompletableFuture.<String>completedFuture(null),
+          accessToken ->
+              loop.await(
+                  Async.start(() -> exchange.apply(authorized(prepared, accessToken))),
+                  loop::complete,
+                  failure -> recover(failure, accessToken, replayed, retryNumber)));
+    }
+
+    private void recover(Throwable failure, String accessToken, boolean replayed, int retryNumber) {
+      if (!(failure instanceof TeachMeHipaaException apiFailure)) {
+        loop.fail(failure);
+        return;
+      }
+      if (accessToken != null && !replayed && isUnauthorized(apiFailure)) {
+        tokens.invalidate(accessToken);
+        loop.await(
+            tokens.accessTokenAsync(),
+            renewed -> {
+              if (renewed.equals(accessToken)) {
+                loop.fail(apiFailure);
+              } else {
+                attempt(true, retryNumber);
+              }
+            });
+        return;
+      }
+      if (!request.retrySafe() || retryNumber > maxRetries || !Retries.isTransient(apiFailure)) {
+        loop.fail(apiFailure);
+        return;
+      }
+      loop.await(
+          config
+              .asyncSleeper()
+              .sleep(Retries.delay(apiFailure, retryNumber, config.clock().instant())),
+          elapsed -> attempt(replayed, retryNumber + 1),
+          stopped -> loop.fail(apiFailure));
     }
   }
 
@@ -378,6 +614,32 @@ public final class ApiRequester {
     return response;
   }
 
+  private CompletableFuture<TransportResponse> exchangeAsync(
+      TransportRequest authorized, Predicate<TransportResponse> usable) {
+    return Async.map(
+        Transport.sendAsync(config, authorized),
+        response -> {
+          if (!usable.test(response)) {
+            throw Errors.fromResponse(response, config.clock().instant());
+          }
+          return response;
+        });
+  }
+
+  // As exchangeStreaming(). A failure's body is read on a library thread: reading a stream blocks.
+  private CompletableFuture<StreamingTransportResponse> exchangeStreamingAsync(
+      TransportRequest authorized, String mediaType) {
+    return Async.compose(
+        Transport.sendStreamingAsync(config, authorized),
+        response -> {
+          if (Errors.isSuccess(response.statusCode())
+              && Errors.hasMediaType(response.headers(), mediaType)) {
+            return CompletableFuture.completedFuture(response);
+          }
+          return Async.blocking(() -> raise(authorized, response));
+        });
+  }
+
   // Only a success of the promised media type is handed back as a stream; anything else is read
   // whole so it can raise like any other failed response.
   private StreamingTransportResponse exchangeStreaming(
@@ -387,6 +649,12 @@ public final class ApiRequester {
         && Errors.hasMediaType(response.headers(), mediaType)) {
       return response;
     }
+    return raise(authorized, response);
+  }
+
+  /** Reads a failed streamed response whole and raises it like any other. */
+  private StreamingTransportResponse raise(
+      TransportRequest authorized, StreamingTransportResponse response) {
     TransportResponse failed;
     try (response) {
       failed =

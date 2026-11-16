@@ -14,11 +14,16 @@ public final class DocHarness {
   static volatile FakeTransport api;
   static volatile FakeClock clock;
   static volatile FakeSleeper sleeper;
+  static volatile FakeAsyncSleeper asyncSleeper;
   static volatile Storage storage;
 
   /** Stands in for {@code TeachMeHipaaClient.builder()}. */
   public static TeachMeHipaaClient.Builder clientBuilder() {
-    return TeachMeHipaaClient.builder().httpTransport(api).clock(clock).sleeper(sleeper);
+    return TeachMeHipaaClient.builder()
+        .httpTransport(api)
+        .clock(clock)
+        .sleeper(sleeper)
+        .asyncSleeper(asyncSleeper);
   }
 
   /** The {@code database} the samples name. */

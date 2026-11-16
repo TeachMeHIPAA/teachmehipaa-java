@@ -34,6 +34,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +43,7 @@ import org.springframework.http.ResponseEntity;
 /** The samples in {@code docs/guides/*.md} (see {@link DocSampleTest}), one check each. */
 class GuidesTest extends DocSampleTest {
   private static final String STATIC_TOKEN = "eyJhbGciOiJIUzI1NiJ9.static.sig";
+  private static final String ORG_LEARNER = "GET " + ORG + "/learners/";
 
   @Override
   List<Path> docs() {
@@ -100,7 +103,14 @@ class GuidesTest extends DocSampleTest {
         Map.entry("configuration-http-client", this::configurationHttpClient),
         Map.entry("logging", this::logging),
         // versioning.md
-        Map.entry("versioning-open-enums", this::versioningOpenEnums));
+        Map.entry("versioning-open-enums", this::versioningOpenEnums),
+        // async.md
+        Map.entry("async-retrieve", this::asyncRetrieve),
+        Map.entry("async-fan-out", this::asyncFanOut),
+        Map.entry("async-errors", this::asyncErrors),
+        Map.entry("async-timeout", this::asyncTimeout),
+        Map.entry("async-pages", this::asyncPages),
+        Map.entry("async-operation", this::asyncOperation));
   }
 
   private FakeTransport signedIn() {
@@ -797,5 +807,78 @@ class GuidesTest extends DocSampleTest {
          "status": "valid", "revokedAt": null}
         """
         .formatted(n, LEARNER_ID);
+  }
+
+  // async.md
+
+  private void asyncRetrieve() throws Exception {
+    signedIn().on(LEARNER_ROUTE, Reply.json(LEARNER_JSON));
+
+    run("async-retrieve");
+
+    assertEquals(List.of("Ana Lima in_progress"), printed());
+  }
+
+  private void asyncFanOut() throws Exception {
+    signedIn()
+        .on(LEARNER_ROUTE, Reply.json(LEARNER_JSON))
+        .on(ORG_LEARNER + EXPIRED_LEARNER_ID, Reply.json(EXPIRED_LEARNER_JSON));
+
+    run("async-fan-out");
+
+    assertEquals(List.of("ana@example.com", "bo@example.com"), printed());
+    assertEquals(1, api.requestsTo(TOKEN_ROUTE).size());
+  }
+
+  private void asyncErrors() throws Exception {
+    signedIn()
+        .on(
+            ORG_LEARNER + EXPIRED_LEARNER_ID,
+            Reply.problem(
+                404,
+                """
+                {"title": "Not found", "status": 404, "code": "not_found"}
+                """));
+
+    run("async-errors");
+
+    assertEquals(List.of("no such Learner"), printed());
+  }
+
+  private void asyncTimeout() throws Exception {
+    signedIn().on(LEARNER_ROUTE, Reply.json(LEARNER_JSON));
+
+    run("async-timeout");
+
+    assertEquals(List.of("ana@example.com"), printed());
+  }
+
+  private void asyncPages() throws Exception {
+    signedIn()
+        .on(
+            "GET " + ORG + "/learners",
+            request ->
+                "cursor-2".equals(query(request).get("cursor"))
+                    ? page(EXPIRED_LEARNER_JSON)
+                    : pageWithNext("cursor-2", LEARNER_JSON, LEARNER_JSON));
+
+    Object sample = construct("async-pages");
+    @SuppressWarnings("unchecked")
+    CompletableFuture<Integer> count = (CompletableFuture<Integer>) call(sample, "countLearners");
+
+    assertEquals(3, count.get(5, TimeUnit.SECONDS));
+    assertEquals(2, api.requestsTo("GET " + ORG + "/learners").size());
+  }
+
+  private void asyncOperation() throws Exception {
+    signedIn()
+        .on(
+            "POST " + ORG + "/certificates:export",
+            Reply.json(202, operation(true, EXPORT_ARTIFACT)));
+
+    run("async-operation");
+
+    assertEquals(List.of("learners-org_acme.csv 1"), printed());
+    assertEquals(List.of(), asyncSleeper.sleeps());
   }
 }

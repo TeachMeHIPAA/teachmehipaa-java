@@ -36,6 +36,7 @@ import com.teachmehipaa.param.LearnerUpdateParams;
 import com.teachmehipaa.param.WebhookSubscriptionCreateParams;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -109,6 +110,40 @@ class ContractTest {
       assertNotNull(course.getCourseId());
     }
     assertEquals(200, page.getLastResponse().statusCode());
+  }
+
+  @Test
+  void listsCoursesAsAPageAsynchronously() {
+    Page<Course> page =
+        client
+            .courses()
+            .listAsync(CourseListParams.builder().limit(5).build())
+            .orTimeout(30, TimeUnit.SECONDS)
+            .join();
+
+    assertEquals(200, page.getLastResponse().statusCode());
+  }
+
+  @Test
+  void retrievesALearnerAsynchronously() {
+    Learner learner =
+        client.learners().retrieveAsync(LEARNER_ID).orTimeout(30, TimeUnit.SECONDS).join();
+
+    assertNotNull(learner.getLearnerId());
+  }
+
+  @Test
+  void streamsACertificatePdfAsynchronously() throws IOException {
+    try (BinaryStreamResponse pdf =
+        client
+            .certificates()
+            .downloadPdfStreamAsync(CERTIFICATE_ID)
+            .orTimeout(30, TimeUnit.SECONDS)
+            .join()) {
+      pdf.inputStream().readAllBytes();
+
+      assertTrue(pdf.contentType().startsWith("application/pdf"), pdf.contentType());
+    }
   }
 
   @Test

@@ -16,6 +16,7 @@ import com.teachmehipaa.param.WebhookSubscriptionListParams;
 import com.teachmehipaa.param.WebhookSubscriptionUpdateParams;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Webhook subscriptions in the client's Organization. Reach it through {@code
@@ -58,6 +59,37 @@ public final class WebhookSubscriptionService {
     return requester.request(request, WebhookSubscriptionCreated.class, options);
   }
 
+  /** Create a webhook subscription. */
+  public CompletableFuture<WebhookSubscriptionCreated> createAsync(
+      WebhookSubscriptionCreateParams params) {
+    return createAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * Create a webhook subscription.
+   *
+   * <p>The asynchronous form of {@link #create(WebhookSubscriptionCreateParams, RequestOptions)}:
+   * it sends the same request, with the same retries, without blocking the calling thread. The
+   * future fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped
+   * in a {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link WebhookSubscriptionCreated}
+   */
+  public CompletableFuture<WebhookSubscriptionCreated> createAsync(
+      WebhookSubscriptionCreateParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/webhook-subscriptions")
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .jsonBody(params)
+            .build();
+    return requester.requestAsync(request, WebhookSubscriptionCreated.class, options);
+  }
+
   /** Delete a webhook subscription. */
   public EmptyResponse delete(String subscriptionId) {
     return delete(subscriptionId, RequestOptions.none());
@@ -85,6 +117,37 @@ public final class WebhookSubscriptionService {
             .pathParam("subscriptionId", subscriptionId)
             .build();
     return requester.requestEmpty(request, options);
+  }
+
+  /** Delete a webhook subscription. */
+  public CompletableFuture<EmptyResponse> deleteAsync(String subscriptionId) {
+    return deleteAsync(subscriptionId, RequestOptions.none());
+  }
+
+  /**
+   * Delete a webhook subscription.
+   *
+   * <p>The asynchronous form of {@link #delete(String, RequestOptions)}: it sends the same request,
+   * with the same retries, without blocking the calling thread. The future fails with the {@code
+   * TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * <p>Never retried: a lost response may hide a change that already happened.
+   *
+   * @param subscriptionId The webhook subscription id.
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the response's metadata: the API answers 204 No Content
+   */
+  public CompletableFuture<EmptyResponse> deleteAsync(
+      String subscriptionId, RequestOptions options) {
+    Objects.requireNonNull(subscriptionId, "subscriptionId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder(
+                "DELETE", "/organizations/{orgId}/webhook-subscriptions/{subscriptionId}")
+            .pathParam("subscriptionId", subscriptionId)
+            .build();
+    return requester.requestEmptyAsync(request, options);
   }
 
   /** List all webhook subscriptions. */
@@ -128,6 +191,49 @@ public final class WebhookSubscriptionService {
         request, Pagination.cursor("cursor"), WebhookSubscription.class, options);
   }
 
+  /** List all webhook subscriptions. */
+  public CompletableFuture<Page<WebhookSubscription>> listAsync() {
+    return listAsync(WebhookSubscriptionListParams.builder().build(), RequestOptions.none());
+  }
+
+  /** List all webhook subscriptions. */
+  public CompletableFuture<Page<WebhookSubscription>> listAsync(RequestOptions options) {
+    return listAsync(WebhookSubscriptionListParams.builder().build(), options);
+  }
+
+  /** List all webhook subscriptions. */
+  public CompletableFuture<Page<WebhookSubscription>> listAsync(
+      WebhookSubscriptionListParams params) {
+    return listAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * List all webhook subscriptions.
+   *
+   * <p>The asynchronous form of {@link #list(WebhookSubscriptionListParams, RequestOptions)}: it
+   * sends the same request, with the same retries, without blocking the calling thread. The future
+   * fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a
+   * {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of one page of {@link WebhookSubscription}; {@code nextCursor()} is {@code
+   *     null} on the last
+   */
+  public CompletableFuture<Page<WebhookSubscription>> listAsync(
+      WebhookSubscriptionListParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/webhook-subscriptions")
+            .queryParam("limit", params.getLimit())
+            .queryParam("cursor", params.getCursor())
+            .retrySafe()
+            .build();
+    return requester.requestPageAsync(
+        request, Pagination.cursor("cursor"), WebhookSubscription.class, options);
+  }
+
   /** Retry failed deliveries. */
   public WebhookDeliveryOperation redrive(String subscriptionId) {
     return redrive(subscriptionId, RequestOptions.none());
@@ -158,6 +264,38 @@ public final class WebhookSubscriptionService {
     return requester.request(request, WebhookDeliveryOperation.class, options);
   }
 
+  /** Retry failed deliveries. */
+  public CompletableFuture<WebhookDeliveryOperation> redriveAsync(String subscriptionId) {
+    return redriveAsync(subscriptionId, RequestOptions.none());
+  }
+
+  /**
+   * Retry failed deliveries.
+   *
+   * <p>The asynchronous form of {@link #redrive(String, RequestOptions)}: it sends the same
+   * request, with the same retries, without blocking the calling thread. The future fails with the
+   * {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param subscriptionId The webhook subscription id.
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link WebhookDeliveryOperation}, which may finish in the background:
+   *     {@code waitForCompletion()} polls until it is done
+   */
+  public CompletableFuture<WebhookDeliveryOperation> redriveAsync(
+      String subscriptionId, RequestOptions options) {
+    Objects.requireNonNull(subscriptionId, "subscriptionId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder(
+                "POST", "/organizations/{orgId}/webhook-subscriptions/{subscriptionId}:redrive")
+            .pathParam("subscriptionId", subscriptionId)
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .build();
+    return requester.requestAsync(request, WebhookDeliveryOperation.class, options);
+  }
+
   /** Retrieve a webhook subscription. */
   public WebhookSubscription retrieve(String subscriptionId) {
     return retrieve(subscriptionId, RequestOptions.none());
@@ -183,6 +321,35 @@ public final class WebhookSubscriptionService {
             .retrySafe()
             .build();
     return requester.request(request, WebhookSubscription.class, options);
+  }
+
+  /** Retrieve a webhook subscription. */
+  public CompletableFuture<WebhookSubscription> retrieveAsync(String subscriptionId) {
+    return retrieveAsync(subscriptionId, RequestOptions.none());
+  }
+
+  /**
+   * Retrieve a webhook subscription.
+   *
+   * <p>The asynchronous form of {@link #retrieve(String, RequestOptions)}: it sends the same
+   * request, with the same retries, without blocking the calling thread. The future fails with the
+   * {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param subscriptionId The webhook subscription id.
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link WebhookSubscription}
+   */
+  public CompletableFuture<WebhookSubscription> retrieveAsync(
+      String subscriptionId, RequestOptions options) {
+    Objects.requireNonNull(subscriptionId, "subscriptionId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/webhook-subscriptions/{subscriptionId}")
+            .pathParam("subscriptionId", subscriptionId)
+            .retrySafe()
+            .build();
+    return requester.requestAsync(request, WebhookSubscription.class, options);
   }
 
   /** Retrieves the webhook subscription unless the copy you hold is current. */
@@ -235,6 +402,61 @@ public final class WebhookSubscriptionService {
     return requester.requestIfModified(request, WebhookSubscription.class, options);
   }
 
+  /** Retrieves the webhook subscription unless the copy you hold is current. */
+  public CompletableFuture<Optional<WebhookSubscription>> retrieveIfModifiedAsync(
+      String subscriptionId, String etag) {
+    return retrieveIfModifiedAsync(subscriptionId, etag, RequestOptions.none());
+  }
+
+  /**
+   * Retrieves the webhook subscription unless the copy you hold is current.
+   *
+   * @throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent
+   */
+  public CompletableFuture<Optional<WebhookSubscription>> retrieveIfModifiedAsync(
+      String subscriptionId, WebhookSubscription cached) {
+    return retrieveIfModifiedAsync(subscriptionId, cached, RequestOptions.none());
+  }
+
+  /**
+   * Retrieves the webhook subscription unless the copy you hold is current.
+   *
+   * @throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent
+   */
+  public CompletableFuture<Optional<WebhookSubscription>> retrieveIfModifiedAsync(
+      String subscriptionId, WebhookSubscription cached, RequestOptions options) {
+    return retrieveIfModifiedAsync(subscriptionId, Etags.of(cached), options);
+  }
+
+  /**
+   * Retrieves the webhook subscription only if it changed since you read the copy you hold: sends
+   * {@code If-None-Match}, so an unchanged one costs no body.
+   *
+   * <p>The asynchronous form of {@link #retrieveIfModified(String, String, RequestOptions)}: it
+   * sends the same request, with the same retries, without blocking the calling thread. The future
+   * fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a
+   * {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param subscriptionId The webhook subscription id.
+   * @param etag the ETag of the copy you hold, from {@code getLastResponse().etag()}
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link WebhookSubscription} when it changed, or empty when the API
+   *     answers 304 Not Modified and your copy is current
+   */
+  public CompletableFuture<Optional<WebhookSubscription>> retrieveIfModifiedAsync(
+      String subscriptionId, String etag, RequestOptions options) {
+    Objects.requireNonNull(subscriptionId, "subscriptionId");
+    Objects.requireNonNull(etag, "etag");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/webhook-subscriptions/{subscriptionId}")
+            .pathParam("subscriptionId", subscriptionId)
+            .header("if-none-match", etag)
+            .retrySafe()
+            .build();
+    return requester.requestIfModifiedAsync(request, WebhookSubscription.class, options);
+  }
+
   /** Send a test event. */
   public WebhookDeliveryOperation test(String subscriptionId) {
     return test(subscriptionId, RequestOptions.none());
@@ -263,6 +485,38 @@ public final class WebhookSubscriptionService {
             .idempotencyKeyRequired()
             .build();
     return requester.request(request, WebhookDeliveryOperation.class, options);
+  }
+
+  /** Send a test event. */
+  public CompletableFuture<WebhookDeliveryOperation> testAsync(String subscriptionId) {
+    return testAsync(subscriptionId, RequestOptions.none());
+  }
+
+  /**
+   * Send a test event.
+   *
+   * <p>The asynchronous form of {@link #test(String, RequestOptions)}: it sends the same request,
+   * with the same retries, without blocking the calling thread. The future fails with the {@code
+   * TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param subscriptionId The webhook subscription id.
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link WebhookDeliveryOperation}, which may finish in the background:
+   *     {@code waitForCompletion()} polls until it is done
+   */
+  public CompletableFuture<WebhookDeliveryOperation> testAsync(
+      String subscriptionId, RequestOptions options) {
+    Objects.requireNonNull(subscriptionId, "subscriptionId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder(
+                "POST", "/organizations/{orgId}/webhook-subscriptions/{subscriptionId}:test")
+            .pathParam("subscriptionId", subscriptionId)
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .build();
+    return requester.requestAsync(request, WebhookDeliveryOperation.class, options);
   }
 
   /** Update a webhook subscription. */
@@ -297,5 +551,41 @@ public final class WebhookSubscriptionService {
             .mergePatchBody(params)
             .build();
     return requester.request(request, WebhookSubscription.class, options);
+  }
+
+  /** Update a webhook subscription. */
+  public CompletableFuture<WebhookSubscription> updateAsync(
+      String subscriptionId, WebhookSubscriptionUpdateParams params) {
+    return updateAsync(subscriptionId, params, RequestOptions.none());
+  }
+
+  /**
+   * Update a webhook subscription.
+   *
+   * <p>The asynchronous form of {@link #update(String, WebhookSubscriptionUpdateParams,
+   * RequestOptions)}: it sends the same request, with the same retries, without blocking the
+   * calling thread. The future fails with the {@code TeachMeHipaaException} subclass that method
+   * throws, never wrapped in a {@code CompletionException}. Cancelling it stops the call and its
+   * retries.
+   *
+   * <p>Never retried: a lost response may hide a change that already happened.
+   *
+   * @param subscriptionId The webhook subscription id.
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link WebhookSubscription}
+   */
+  public CompletableFuture<WebhookSubscription> updateAsync(
+      String subscriptionId, WebhookSubscriptionUpdateParams params, RequestOptions options) {
+    Objects.requireNonNull(subscriptionId, "subscriptionId");
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("PATCH", "/organizations/{orgId}/webhook-subscriptions/{subscriptionId}")
+            .pathParam("subscriptionId", subscriptionId)
+            .header("if-match", params.getIfMatch())
+            .mergePatchBody(params)
+            .build();
+    return requester.requestAsync(request, WebhookSubscription.class, options);
   }
 }

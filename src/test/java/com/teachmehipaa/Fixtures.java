@@ -104,7 +104,8 @@ final class Fixtures {
         .clientId(CLIENT_ID)
         .clientSecret(CLIENT_SECRET)
         .httpTransport(api)
-        .sleeper(new FakeSleeper());
+        .sleeper(new FakeSleeper())
+        .asyncSleeper(new FakeAsyncSleeper());
   }
 
   private Fixtures() {}

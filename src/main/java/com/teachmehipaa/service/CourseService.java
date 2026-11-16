@@ -11,6 +11,7 @@ import com.teachmehipaa.model.Course;
 import com.teachmehipaa.param.CourseListParams;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /** Courses. Reach it through {@code client.courses()}. */
 public final class CourseService {
@@ -59,6 +60,48 @@ public final class CourseService {
     return requester.requestPage(request, Pagination.cursor("cursor"), Course.class, options);
   }
 
+  /** List all courses. */
+  public CompletableFuture<Page<Course>> listAsync() {
+    return listAsync(CourseListParams.builder().build(), RequestOptions.none());
+  }
+
+  /** List all courses. */
+  public CompletableFuture<Page<Course>> listAsync(RequestOptions options) {
+    return listAsync(CourseListParams.builder().build(), options);
+  }
+
+  /** List all courses. */
+  public CompletableFuture<Page<Course>> listAsync(CourseListParams params) {
+    return listAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * List all courses.
+   *
+   * <p>The asynchronous form of {@link #list(CourseListParams, RequestOptions)}: it sends the same
+   * request, with the same retries, without blocking the calling thread. The future fails with the
+   * {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of one page of {@link Course}; {@code nextCursor()} is {@code null} on the
+   *     last
+   */
+  public CompletableFuture<Page<Course>> listAsync(
+      CourseListParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/courses")
+            .queryParam("limit", params.getLimit())
+            .queryParam("cursor", params.getCursor())
+            .unauthenticated()
+            .retrySafe()
+            .build();
+    return requester.requestPageAsync(request, Pagination.cursor("cursor"), Course.class, options);
+  }
+
   /** Retrieve a course. */
   public Course retrieve(String courseId) {
     return retrieve(courseId, RequestOptions.none());
@@ -84,6 +127,35 @@ public final class CourseService {
             .retrySafe()
             .build();
     return requester.request(request, Course.class, options);
+  }
+
+  /** Retrieve a course. */
+  public CompletableFuture<Course> retrieveAsync(String courseId) {
+    return retrieveAsync(courseId, RequestOptions.none());
+  }
+
+  /**
+   * Retrieve a course.
+   *
+   * <p>The asynchronous form of {@link #retrieve(String, RequestOptions)}: it sends the same
+   * request, with the same retries, without blocking the calling thread. The future fails with the
+   * {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param courseId
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Course}
+   */
+  public CompletableFuture<Course> retrieveAsync(String courseId, RequestOptions options) {
+    Objects.requireNonNull(courseId, "courseId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/courses/{courseId}")
+            .pathParam("courseId", courseId)
+            .unauthenticated()
+            .retrySafe()
+            .build();
+    return requester.requestAsync(request, Course.class, options);
   }
 
   /** Retrieves the course unless the copy you hold is current. */
@@ -133,5 +205,60 @@ public final class CourseService {
             .retrySafe()
             .build();
     return requester.requestIfModified(request, Course.class, options);
+  }
+
+  /** Retrieves the course unless the copy you hold is current. */
+  public CompletableFuture<Optional<Course>> retrieveIfModifiedAsync(String courseId, String etag) {
+    return retrieveIfModifiedAsync(courseId, etag, RequestOptions.none());
+  }
+
+  /**
+   * Retrieves the course unless the copy you hold is current.
+   *
+   * @throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent
+   */
+  public CompletableFuture<Optional<Course>> retrieveIfModifiedAsync(
+      String courseId, Course cached) {
+    return retrieveIfModifiedAsync(courseId, cached, RequestOptions.none());
+  }
+
+  /**
+   * Retrieves the course unless the copy you hold is current.
+   *
+   * @throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent
+   */
+  public CompletableFuture<Optional<Course>> retrieveIfModifiedAsync(
+      String courseId, Course cached, RequestOptions options) {
+    return retrieveIfModifiedAsync(courseId, Etags.of(cached), options);
+  }
+
+  /**
+   * Retrieves the course only if it changed since you read the copy you hold: sends {@code
+   * If-None-Match}, so an unchanged one costs no body.
+   *
+   * <p>The asynchronous form of {@link #retrieveIfModified(String, String, RequestOptions)}: it
+   * sends the same request, with the same retries, without blocking the calling thread. The future
+   * fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a
+   * {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param courseId
+   * @param etag the ETag of the copy you hold, from {@code getLastResponse().etag()}
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Course} when it changed, or empty when the API answers 304 Not
+   *     Modified and your copy is current
+   */
+  public CompletableFuture<Optional<Course>> retrieveIfModifiedAsync(
+      String courseId, String etag, RequestOptions options) {
+    Objects.requireNonNull(courseId, "courseId");
+    Objects.requireNonNull(etag, "etag");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/courses/{courseId}")
+            .pathParam("courseId", courseId)
+            .header("if-none-match", etag)
+            .unauthenticated()
+            .retrySafe()
+            .build();
+    return requester.requestIfModifiedAsync(request, Course.class, options);
   }
 }

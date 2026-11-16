@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.teachmehipaa.RequestOptions;
 import com.teachmehipaa.core.ApiRequest;
 import com.teachmehipaa.core.ApiRequester;
+import com.teachmehipaa.core.Async;
 import com.teachmehipaa.core.Errors;
 import com.teachmehipaa.core.LastResponse;
 import com.teachmehipaa.core.Retries;
@@ -22,6 +23,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Work that may finish after the request that started it, such as an export or a redrive (grilling
@@ -35,6 +37,8 @@ import java.util.Objects;
  * WebhookDeliveryOperation delivery =
  *     client.webhookSubscriptions().test(subscriptionId).waitForCompletion();
  * }</pre>
+ *
+ * <p>{@link #waitForCompletionAsync()} waits the same way without holding a thread.
  */
 public sealed class Operation extends OperationBase permits WebhookDeliveryOperation {
   /** How long {@link #waitForCompletion()} waits in all: 5 minutes. */
@@ -87,23 +91,12 @@ public sealed class Operation extends OperationBase permits WebhookDeliveryOpera
    * @throws IllegalStateException when this Operation was not returned by an API call
    */
   public Operation waitForCompletion(Duration timeout, Duration interval) {
-    Objects.requireNonNull(timeout, "timeout");
-    Objects.requireNonNull(interval, "interval");
-    if (timeout.isNegative()) {
-      throw new IllegalArgumentException("timeout must be zero or more");
-    }
-    if (interval.isZero() || interval.isNegative()) {
-      throw new IllegalArgumentException("interval must be more than zero");
-    }
+    checkWait(timeout, interval);
     if (isDone()) {
       return settled();
     }
     ApiRequester requester = requester();
-    ApiRequest poll =
-        ApiRequest.builder("GET", POLL_PATH)
-            .pathParam("operationId", operationIdFromName(getName()))
-            .retrySafe()
-            .build();
+    ApiRequest poll = poll();
     Instant deadline = requester.clock().instant().plus(timeout);
     Operation latest = this;
     for (int pollNumber = 1; ; pollNumber++) {
@@ -133,6 +126,120 @@ public sealed class Operation extends OperationBase permits WebhookDeliveryOpera
         throw timedOut(latest, timeout);
       }
     }
+  }
+
+  /**
+   * As {@link #waitForCompletion()}, without blocking: polls for up to {@link
+   * #DEFAULT_WAIT_TIMEOUT}, starting {@link #DEFAULT_POLL_INTERVAL} apart.
+   *
+   * @see #waitForCompletionAsync(Duration, Duration)
+   */
+  public CompletableFuture<? extends Operation> waitForCompletionAsync() {
+    return waitForCompletionAsync(DEFAULT_WAIT_TIMEOUT, DEFAULT_POLL_INTERVAL);
+  }
+
+  /**
+   * As {@link #waitForCompletion(Duration, Duration)}, without blocking: the same polls, backoff
+   * and deadline, waited on the client's {@code asyncSleeper}. An Operation that is already done
+   * completes the future at once, without a request.
+   *
+   * <p>The future fails with the {@link OperationFailedException}, {@link
+   * OperationTimeoutException} or {@code TeachMeHipaaException} that {@code waitForCompletion}
+   * would throw. Cancelling it stops the polls.
+   *
+   * <p>The future holds this Operation's own class: {@link WebhookDeliveryOperation} narrows the
+   * return type to {@code CompletableFuture<WebhookDeliveryOperation>}.
+   *
+   * @param timeout how long to wait in all; zero or more
+   * @param interval how long to wait before the first poll; more than zero
+   * @return a future of the done Operation
+   * @throws IllegalArgumentException when {@code timeout} or {@code interval} is out of range;
+   *     nothing is sent
+   * @throws IllegalStateException when this Operation was not returned by an API call
+   */
+  public CompletableFuture<? extends Operation> waitForCompletionAsync(
+      Duration timeout, Duration interval) {
+    checkWait(timeout, interval);
+    if (isDone()) {
+      try {
+        return CompletableFuture.completedFuture(settled());
+      } catch (OperationFailedException failed) {
+        return CompletableFuture.failedFuture(failed);
+      }
+    }
+    ApiRequester requester = requester();
+    Async.Loop<Operation> loop = new Async.Loop<>();
+    new AsyncPolls(
+            loop, requester, poll(), requester.clock().instant().plus(timeout), timeout, interval)
+        .next(this, 1);
+    return loop.result();
+  }
+
+  // The loop of waitForCompletion(Duration, Duration), one step per completed future.
+  private final class AsyncPolls {
+    private final Async.Loop<Operation> loop;
+    private final ApiRequester requester;
+    private final ApiRequest poll;
+    private final Instant deadline;
+    private final Duration timeout;
+    private final Duration interval;
+
+    AsyncPolls(
+        Async.Loop<Operation> loop,
+        ApiRequester requester,
+        ApiRequest poll,
+        Instant deadline,
+        Duration timeout,
+        Duration interval) {
+      this.loop = loop;
+      this.requester = requester;
+      this.poll = poll;
+      this.deadline = deadline;
+      this.timeout = timeout;
+      this.interval = interval;
+    }
+
+    void next(Operation latest, int pollNumber) {
+      Duration remaining = Duration.between(requester.clock().instant(), deadline);
+      if (remaining.isZero() || remaining.isNegative()) {
+        loop.fail(timedOut(latest, timeout));
+        return;
+      }
+      Duration delay = Retries.backoff(interval, MAX_POLL_INTERVAL, pollNumber);
+      boolean lastPoll = delay.compareTo(remaining) >= 0;
+      loop.await(
+          requester.asyncSleeper().sleep(lastPoll ? remaining : delay),
+          elapsed ->
+              loop.await(
+                  requester.requestAsync(poll, Operation.this.getClass(), RequestOptions.none()),
+                  polled -> {
+                    if (polled.isDone()) {
+                      loop.complete(polled.settled());
+                    } else if (lastPoll) {
+                      loop.fail(timedOut(polled, timeout));
+                    } else {
+                      next(polled, pollNumber + 1);
+                    }
+                  }));
+    }
+  }
+
+  private static void checkWait(Duration timeout, Duration interval) {
+    Objects.requireNonNull(timeout, "timeout");
+    Objects.requireNonNull(interval, "interval");
+    if (timeout.isNegative()) {
+      throw new IllegalArgumentException("timeout must be zero or more");
+    }
+    if (interval.isZero() || interval.isNegative()) {
+      throw new IllegalArgumentException("interval must be more than zero");
+    }
+  }
+
+  private ApiRequest poll() {
+    return ApiRequest.builder("GET", POLL_PATH)
+        .pathParam("operationId", operationIdFromName(getName()))
+        .retrySafe()
+        .build();
   }
 
   /**

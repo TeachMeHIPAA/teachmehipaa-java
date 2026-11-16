@@ -25,6 +25,7 @@ import com.teachmehipaa.param.EnrollmentPreviewImportParams;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /** Enrollments in the client's Organization. Reach it through {@code client.enrollments()}. */
 public final class EnrollmentService {
@@ -65,6 +66,36 @@ public final class EnrollmentService {
   }
 
   /** Update many enrollments. */
+  public CompletableFuture<EnrollmentsBatchResults> batchAsync(EnrollmentBatchParams params) {
+    return batchAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * Update many enrollments.
+   *
+   * <p>The asynchronous form of {@link #batch(EnrollmentBatchParams, RequestOptions)}: it sends the
+   * same request, with the same retries, without blocking the calling thread. The future fails with
+   * the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link EnrollmentsBatchResults}
+   */
+  public CompletableFuture<EnrollmentsBatchResults> batchAsync(
+      EnrollmentBatchParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/enrollments:batch")
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .jsonBody(params)
+            .build();
+    return requester.requestAsync(request, EnrollmentsBatchResults.class, options);
+  }
+
+  /** Update many enrollments. */
   public Operation batchByFilter(EnrollmentBatchByFilterParams params) {
     return batchByFilter(params, RequestOptions.none());
   }
@@ -92,6 +123,38 @@ public final class EnrollmentService {
             .jsonBody(params)
             .build();
     return requester.request(request, Operation.class, options);
+  }
+
+  /** Update many enrollments. */
+  public CompletableFuture<Operation> batchByFilterAsync(EnrollmentBatchByFilterParams params) {
+    return batchByFilterAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * Update many enrollments.
+   *
+   * <p>The asynchronous form of {@link #batchByFilter(EnrollmentBatchByFilterParams,
+   * RequestOptions)}: it sends the same request, with the same retries, without blocking the
+   * calling thread. The future fails with the {@code TeachMeHipaaException} subclass that method
+   * throws, never wrapped in a {@code CompletionException}. Cancelling it stops the call and its
+   * retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Operation}, which may finish in the background: {@code
+   *     waitForCompletion()} polls until it is done
+   */
+  public CompletableFuture<Operation> batchByFilterAsync(
+      EnrollmentBatchByFilterParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/enrollments:batch")
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .jsonBody(params)
+            .build();
+    return requester.requestAsync(request, Operation.class, options);
   }
 
   /** Cancel an enrollment. */
@@ -138,6 +201,52 @@ public final class EnrollmentService {
     return requester.request(request, CancelEnrollmentResponse.class, options);
   }
 
+  /** Cancel an enrollment. */
+  public CompletableFuture<CancelEnrollmentResponse> cancelAsync(String enrollmentId) {
+    return cancelAsync(
+        enrollmentId, EnrollmentCancelParams.builder().build(), RequestOptions.none());
+  }
+
+  /** Cancel an enrollment. */
+  public CompletableFuture<CancelEnrollmentResponse> cancelAsync(
+      String enrollmentId, RequestOptions options) {
+    return cancelAsync(enrollmentId, EnrollmentCancelParams.builder().build(), options);
+  }
+
+  /** Cancel an enrollment. */
+  public CompletableFuture<CancelEnrollmentResponse> cancelAsync(
+      String enrollmentId, EnrollmentCancelParams params) {
+    return cancelAsync(enrollmentId, params, RequestOptions.none());
+  }
+
+  /**
+   * Cancel an enrollment.
+   *
+   * <p>The asynchronous form of {@link #cancel(String, EnrollmentCancelParams, RequestOptions)}: it
+   * sends the same request, with the same retries, without blocking the calling thread. The future
+   * fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a
+   * {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param enrollmentId
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link CancelEnrollmentResponse}
+   */
+  public CompletableFuture<CancelEnrollmentResponse> cancelAsync(
+      String enrollmentId, EnrollmentCancelParams params, RequestOptions options) {
+    Objects.requireNonNull(enrollmentId, "enrollmentId");
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/enrollments/{enrollmentId}:cancel")
+            .pathParam("enrollmentId", enrollmentId)
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .jsonBody(params)
+            .build();
+    return requester.requestAsync(request, CancelEnrollmentResponse.class, options);
+  }
+
   /** Create an enrollment. */
   public Enrollment create(EnrollmentCreateParams params) {
     return create(params, RequestOptions.none());
@@ -164,6 +273,36 @@ public final class EnrollmentService {
             .jsonBody(params)
             .build();
     return requester.request(request, Enrollment.class, options);
+  }
+
+  /** Create an enrollment. */
+  public CompletableFuture<Enrollment> createAsync(EnrollmentCreateParams params) {
+    return createAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * Create an enrollment.
+   *
+   * <p>The asynchronous form of {@link #create(EnrollmentCreateParams, RequestOptions)}: it sends
+   * the same request, with the same retries, without blocking the calling thread. The future fails
+   * with the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Enrollment}
+   */
+  public CompletableFuture<Enrollment> createAsync(
+      EnrollmentCreateParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/enrollments")
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .jsonBody(params)
+            .build();
+    return requester.requestAsync(request, Enrollment.class, options);
   }
 
   /** Export enrollments. */
@@ -193,6 +332,37 @@ public final class EnrollmentService {
             .jsonBody(params)
             .build();
     return requester.request(request, Operation.class, options);
+  }
+
+  /** Export enrollments. */
+  public CompletableFuture<Operation> exportAsync(EnrollmentExportParams params) {
+    return exportAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * Export enrollments.
+   *
+   * <p>The asynchronous form of {@link #export(EnrollmentExportParams, RequestOptions)}: it sends
+   * the same request, with the same retries, without blocking the calling thread. The future fails
+   * with the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Operation}, which may finish in the background: {@code
+   *     waitForCompletion()} polls until it is done
+   */
+  public CompletableFuture<Operation> exportAsync(
+      EnrollmentExportParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/enrollments:export")
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .jsonBody(params)
+            .build();
+    return requester.requestAsync(request, Operation.class, options);
   }
 
   /** Import learners from CSV. */
@@ -226,6 +396,39 @@ public final class EnrollmentService {
             .fixedBodyValue(List.of("options", "validateOnly"), false)
             .build();
     return requester.request(request, Operation.class, options);
+  }
+
+  /** Import learners from CSV. */
+  public CompletableFuture<Operation> importEnrollmentsAsync(EnrollmentImportParams params) {
+    return importEnrollmentsAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * Import learners from CSV.
+   *
+   * <p>The asynchronous form of {@link #importEnrollments(EnrollmentImportParams, RequestOptions)}:
+   * it sends the same request, with the same retries, without blocking the calling thread. The
+   * future fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped
+   * in a {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Operation}, which may finish in the background: {@code
+   *     waitForCompletion()} polls until it is done
+   */
+  public CompletableFuture<Operation> importEnrollmentsAsync(
+      EnrollmentImportParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/enrollments:import")
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .multipartBody(params)
+            .filePart("file", params.getFile(), "text/csv")
+            .fixedBodyValue(List.of("options", "validateOnly"), false)
+            .build();
+    return requester.requestAsync(request, Operation.class, options);
   }
 
   /** List all enrollments. */
@@ -272,6 +475,52 @@ public final class EnrollmentService {
         request, Pagination.cursor("cursor"), OrgEnrollmentListItem.class, options);
   }
 
+  /** List all enrollments. */
+  public CompletableFuture<Page<OrgEnrollmentListItem>> listAsync() {
+    return listAsync(EnrollmentListParams.builder().build(), RequestOptions.none());
+  }
+
+  /** List all enrollments. */
+  public CompletableFuture<Page<OrgEnrollmentListItem>> listAsync(RequestOptions options) {
+    return listAsync(EnrollmentListParams.builder().build(), options);
+  }
+
+  /** List all enrollments. */
+  public CompletableFuture<Page<OrgEnrollmentListItem>> listAsync(EnrollmentListParams params) {
+    return listAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * List all enrollments.
+   *
+   * <p>The asynchronous form of {@link #list(EnrollmentListParams, RequestOptions)}: it sends the
+   * same request, with the same retries, without blocking the calling thread. The future fails with
+   * the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of one page of {@link OrgEnrollmentListItem}; {@code nextCursor()} is {@code
+   *     null} on the last
+   */
+  public CompletableFuture<Page<OrgEnrollmentListItem>> listAsync(
+      EnrollmentListParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/enrollments")
+            .queryParam("limit", params.getLimit())
+            .queryParam("cursor", params.getCursor())
+            .queryParam("status", params.getStatus())
+            .queryParam("courseId", params.getCourseId())
+            .queryParam("archived", params.getArchived())
+            .queryParam("include", params.getInclude())
+            .retrySafe()
+            .build();
+    return requester.requestPageAsync(
+        request, Pagination.cursor("cursor"), OrgEnrollmentListItem.class, options);
+  }
+
   /** Import learners from CSV. */
   public ImportPreview previewImport(EnrollmentPreviewImportParams params) {
     return previewImport(params, RequestOptions.none());
@@ -304,6 +553,39 @@ public final class EnrollmentService {
     return requester.request(request, ImportPreview.class, options);
   }
 
+  /** Import learners from CSV. */
+  public CompletableFuture<ImportPreview> previewImportAsync(EnrollmentPreviewImportParams params) {
+    return previewImportAsync(params, RequestOptions.none());
+  }
+
+  /**
+   * Import learners from CSV.
+   *
+   * <p>The asynchronous form of {@link #previewImport(EnrollmentPreviewImportParams,
+   * RequestOptions)}: it sends the same request, with the same retries, without blocking the
+   * calling thread. The future fails with the {@code TeachMeHipaaException} subclass that method
+   * throws, never wrapped in a {@code CompletionException}. Cancelling it stops the call and its
+   * retries.
+   *
+   * @param params the call's parameters
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link ImportPreview}
+   */
+  public CompletableFuture<ImportPreview> previewImportAsync(
+      EnrollmentPreviewImportParams params, RequestOptions options) {
+    Objects.requireNonNull(params, "params");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/enrollments:import")
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .multipartBody(params)
+            .filePart("file", params.getFile(), "text/csv")
+            .fixedBodyValue(List.of("options", "validateOnly"), true)
+            .build();
+    return requester.requestAsync(request, ImportPreview.class, options);
+  }
+
   /** Remind an enrollment. */
   public EnrollmentActionAccepted remind(String enrollmentId) {
     return remind(enrollmentId, RequestOptions.none());
@@ -330,6 +612,36 @@ public final class EnrollmentService {
             .idempotencyKeyRequired()
             .build();
     return requester.request(request, EnrollmentActionAccepted.class, options);
+  }
+
+  /** Remind an enrollment. */
+  public CompletableFuture<EnrollmentActionAccepted> remindAsync(String enrollmentId) {
+    return remindAsync(enrollmentId, RequestOptions.none());
+  }
+
+  /**
+   * Remind an enrollment.
+   *
+   * <p>The asynchronous form of {@link #remind(String, RequestOptions)}: it sends the same request,
+   * with the same retries, without blocking the calling thread. The future fails with the {@code
+   * TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param enrollmentId
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link EnrollmentActionAccepted}
+   */
+  public CompletableFuture<EnrollmentActionAccepted> remindAsync(
+      String enrollmentId, RequestOptions options) {
+    Objects.requireNonNull(enrollmentId, "enrollmentId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/enrollments/{enrollmentId}:remind")
+            .pathParam("enrollmentId", enrollmentId)
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .build();
+    return requester.requestAsync(request, EnrollmentActionAccepted.class, options);
   }
 
   /** Renew an enrollment. */
@@ -360,6 +672,35 @@ public final class EnrollmentService {
     return requester.request(request, Enrollment.class, options);
   }
 
+  /** Renew an enrollment. */
+  public CompletableFuture<Enrollment> renewAsync(String enrollmentId) {
+    return renewAsync(enrollmentId, RequestOptions.none());
+  }
+
+  /**
+   * Renew an enrollment.
+   *
+   * <p>The asynchronous form of {@link #renew(String, RequestOptions)}: it sends the same request,
+   * with the same retries, without blocking the calling thread. The future fails with the {@code
+   * TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param enrollmentId
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Enrollment}
+   */
+  public CompletableFuture<Enrollment> renewAsync(String enrollmentId, RequestOptions options) {
+    Objects.requireNonNull(enrollmentId, "enrollmentId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/enrollments/{enrollmentId}:renew")
+            .pathParam("enrollmentId", enrollmentId)
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .build();
+    return requester.requestAsync(request, Enrollment.class, options);
+  }
+
   /** Resend an invite. */
   public EnrollmentActionAccepted resendInvite(String enrollmentId) {
     return resendInvite(enrollmentId, RequestOptions.none());
@@ -388,6 +729,36 @@ public final class EnrollmentService {
     return requester.request(request, EnrollmentActionAccepted.class, options);
   }
 
+  /** Resend an invite. */
+  public CompletableFuture<EnrollmentActionAccepted> resendInviteAsync(String enrollmentId) {
+    return resendInviteAsync(enrollmentId, RequestOptions.none());
+  }
+
+  /**
+   * Resend an invite.
+   *
+   * <p>The asynchronous form of {@link #resendInvite(String, RequestOptions)}: it sends the same
+   * request, with the same retries, without blocking the calling thread. The future fails with the
+   * {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param enrollmentId
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link EnrollmentActionAccepted}
+   */
+  public CompletableFuture<EnrollmentActionAccepted> resendInviteAsync(
+      String enrollmentId, RequestOptions options) {
+    Objects.requireNonNull(enrollmentId, "enrollmentId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("POST", "/organizations/{orgId}/enrollments/{enrollmentId}:resendInvite")
+            .pathParam("enrollmentId", enrollmentId)
+            .retrySafe()
+            .idempotencyKeyRequired()
+            .build();
+    return requester.requestAsync(request, EnrollmentActionAccepted.class, options);
+  }
+
   /** Retrieve an enrollment. */
   public Enrollment retrieve(String enrollmentId) {
     return retrieve(enrollmentId, RequestOptions.none());
@@ -412,6 +783,34 @@ public final class EnrollmentService {
             .retrySafe()
             .build();
     return requester.request(request, Enrollment.class, options);
+  }
+
+  /** Retrieve an enrollment. */
+  public CompletableFuture<Enrollment> retrieveAsync(String enrollmentId) {
+    return retrieveAsync(enrollmentId, RequestOptions.none());
+  }
+
+  /**
+   * Retrieve an enrollment.
+   *
+   * <p>The asynchronous form of {@link #retrieve(String, RequestOptions)}: it sends the same
+   * request, with the same retries, without blocking the calling thread. The future fails with the
+   * {@code TeachMeHipaaException} subclass that method throws, never wrapped in a {@code
+   * CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param enrollmentId
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Enrollment}
+   */
+  public CompletableFuture<Enrollment> retrieveAsync(String enrollmentId, RequestOptions options) {
+    Objects.requireNonNull(enrollmentId, "enrollmentId");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/enrollments/{enrollmentId}")
+            .pathParam("enrollmentId", enrollmentId)
+            .retrySafe()
+            .build();
+    return requester.requestAsync(request, Enrollment.class, options);
   }
 
   /** Retrieves the enrollment unless the copy you hold is current. */
@@ -461,5 +860,60 @@ public final class EnrollmentService {
             .retrySafe()
             .build();
     return requester.requestIfModified(request, Enrollment.class, options);
+  }
+
+  /** Retrieves the enrollment unless the copy you hold is current. */
+  public CompletableFuture<Optional<Enrollment>> retrieveIfModifiedAsync(
+      String enrollmentId, String etag) {
+    return retrieveIfModifiedAsync(enrollmentId, etag, RequestOptions.none());
+  }
+
+  /**
+   * Retrieves the enrollment unless the copy you hold is current.
+   *
+   * @throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent
+   */
+  public CompletableFuture<Optional<Enrollment>> retrieveIfModifiedAsync(
+      String enrollmentId, Enrollment cached) {
+    return retrieveIfModifiedAsync(enrollmentId, cached, RequestOptions.none());
+  }
+
+  /**
+   * Retrieves the enrollment unless the copy you hold is current.
+   *
+   * @throws IllegalArgumentException when {@code cached} carries no ETag; nothing is sent
+   */
+  public CompletableFuture<Optional<Enrollment>> retrieveIfModifiedAsync(
+      String enrollmentId, Enrollment cached, RequestOptions options) {
+    return retrieveIfModifiedAsync(enrollmentId, Etags.of(cached), options);
+  }
+
+  /**
+   * Retrieves the enrollment only if it changed since you read the copy you hold: sends {@code
+   * If-None-Match}, so an unchanged one costs no body.
+   *
+   * <p>The asynchronous form of {@link #retrieveIfModified(String, String, RequestOptions)}: it
+   * sends the same request, with the same retries, without blocking the calling thread. The future
+   * fails with the {@code TeachMeHipaaException} subclass that method throws, never wrapped in a
+   * {@code CompletionException}. Cancelling it stops the call and its retries.
+   *
+   * @param enrollmentId
+   * @param etag the ETag of the copy you hold, from {@code getLastResponse().etag()}
+   * @param options settings for this call only, such as a timeout or request id
+   * @return a future of the {@link Enrollment} when it changed, or empty when the API answers 304
+   *     Not Modified and your copy is current
+   */
+  public CompletableFuture<Optional<Enrollment>> retrieveIfModifiedAsync(
+      String enrollmentId, String etag, RequestOptions options) {
+    Objects.requireNonNull(enrollmentId, "enrollmentId");
+    Objects.requireNonNull(etag, "etag");
+    Objects.requireNonNull(options, "options");
+    ApiRequest request =
+        ApiRequest.builder("GET", "/organizations/{orgId}/enrollments/{enrollmentId}")
+            .pathParam("enrollmentId", enrollmentId)
+            .header("if-none-match", etag)
+            .retrySafe()
+            .build();
+    return requester.requestIfModifiedAsync(request, Enrollment.class, options);
   }
 }

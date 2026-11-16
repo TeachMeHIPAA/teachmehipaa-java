@@ -109,7 +109,9 @@ Tips for tests:
   the client's retries and backoff.
 - A **`clock`** (a `java.time.Clock`) and a **`sleeper`** replace real time.
   A `Sleeper` that returns at once makes retry backoff and
-  `waitForCompletion` polling instant.
+  `waitForCompletion` polling instant. The [async calls](async.md) wait on an
+  **`asyncSleeper`** instead: an `AsyncSleeper` that returns
+  `CompletableFuture.completedFuture(null)` does the same for them.
 - The transport returns error statuses as responses; throw an `IOException`
   only to simulate a network failure, which the client raises as
   `ApiConnectionException`.

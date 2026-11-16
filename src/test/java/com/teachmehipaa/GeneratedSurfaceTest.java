@@ -12,6 +12,8 @@ import com.teachmehipaa.generator.HandWritten;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -193,8 +196,68 @@ class GeneratedSurfaceTest {
     assertEquals(45, expected.size());
     assertTrue(expected.containsAll(GENERATED_SIBLINGS.values()));
     expected.addAll(GENERATED_SIBLINGS.keySet());
+    // Issue #2: every generated method, siblings included, has an …Async twin.
+    expected.addAll(expected.stream().map(name -> name + "Async").toList());
     expected.addAll(HandWritten.methods());
     assertEquals(expected, publicMethods(client.getClass(), ""));
+  }
+
+  @Test
+  void everyAsyncOverloadReturnsAFutureOfWhatItsBlockingTwinReturns() {
+    List<Method> services = new ArrayList<>();
+    for (Method accessor : TeachMeHipaaClient.class.getMethods()) {
+      if (isService(accessor.getReturnType())) {
+        services.addAll(serviceMethods(accessor.getReturnType()));
+      }
+    }
+    int checked = 0;
+    for (Method async : services) {
+      if (!async.getName().endsWith("Async")) {
+        continue;
+      }
+      String twinName = async.getName().substring(0, async.getName().length() - "Async".length());
+      Method twin;
+      try {
+        twin = async.getDeclaringClass().getMethod(twinName, async.getParameterTypes());
+      } catch (NoSuchMethodException missing) {
+        throw new AssertionError(async + " has no blocking twin with the same parameters");
+      }
+      Type returned = async.getGenericReturnType();
+      assertTrue(
+          returned instanceof ParameterizedType future
+              && future.getRawType() == CompletableFuture.class
+              && future.getActualTypeArguments()[0].equals(twin.getGenericReturnType()),
+          async + " returns " + returned + ", not a future of " + twin.getGenericReturnType());
+      checked++;
+    }
+    // Every blocking overload has its twin, so the two counts match.
+    long blocking =
+        services.stream()
+            .filter(method -> !method.getName().endsWith("Async"))
+            .filter(
+                method ->
+                    !HandWritten.methods().stream()
+                        .anyMatch(h -> h.endsWith("." + method.getName())))
+            .count();
+    assertEquals(blocking, checked);
+  }
+
+  /** The public instance methods of a service and its generated base, accessors left out. */
+  private static List<Method> serviceMethods(Class<?> service) {
+    List<Method> methods = new ArrayList<>();
+    for (Method method : service.getMethods()) {
+      if (method.getDeclaringClass() != Object.class
+          && !Modifier.isStatic(method.getModifiers())
+          && !isService(method.getReturnType())) {
+        methods.add(method);
+      }
+    }
+    for (Method accessor : service.getMethods()) {
+      if (isService(accessor.getReturnType()) && accessor.getParameterCount() == 0) {
+        methods.addAll(serviceMethods(accessor.getReturnType()));
+      }
+    }
+    return methods;
   }
 
   @Test
