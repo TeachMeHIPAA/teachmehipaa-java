@@ -69,3 +69,25 @@ Generated from the Developer API document release `trimmed-2026-11-15`.
 - Java 17 or newer, with `jackson-databind` and `jackson-annotations` as API
   (compile-scope) dependencies, since public models expose `JsonNode`. No
   telemetry and no disk writes.
+
+### Documentation
+
+- Guides in `docs/guides/`: getting started, authentication, errors and
+  retries, pagination and the Event log, webhooks (Spring Boot, servlet and
+  JDK HTTP server handlers), Operations and files, conditional requests,
+  testing, configuration and versioning. Every Java sample in them and in the
+  README is compiled against the library and run against a fake transport by
+  the test suite, which also checks every relative link and anchor.
+- `docs/reference/resources.md`, generated from the SDK IR by
+  `./gradlew generate`: every service and method with its overloads, HTTP
+  route, Scopes, retry, idempotency and conditional behavior, and return
+  type. `generateCheck` keeps it current, and a test checks it against the
+  compiled services.
+- The Javadoc as the API reference, with an overview page, built with doclint
+  and `-Werror` on every build and published to GitHub Pages from `main` by
+  a new Docs workflow.
+- Runnable examples in `examples/`: a quickstart, a roster sync by External
+  ID, a webhook endpoint on the JDK's HTTP server and a Certificate export,
+  compiled by `check` and run with `./gradlew runExample -Pexample=<Name>`.
+- A shorter README with a pre-release status note that links to the guides,
+  and `docs/README.md`, an index of all documentation.

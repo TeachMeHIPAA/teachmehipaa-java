@@ -79,9 +79,9 @@ final class ServiceWriter {
   }
 
   /** What a method returns and how the requester produces it. */
-  private record Returns(String type, String call, String doc) {}
+  record Returns(String type, String call, String doc) {}
 
-  private Returns returns(Surface.MethodPlan plan, JavaFile file) {
+  static Returns returns(Surface.MethodPlan plan, JavaFile file) {
     Ir.Response response = plan.method().response();
     if (response instanceof Ir.ModelResponse model) {
       String type = model(model.type(), file);
@@ -139,7 +139,7 @@ final class ServiceWriter {
   }
 
   // A sibling of each download: the same request, its body handed over unread.
-  private static Returns streamReturns(Surface.MethodPlan plan, JavaFile file) {
+  static Returns streamReturns(Surface.MethodPlan plan, JavaFile file) {
     return new Returns(
         file.use(CORE + "BinaryStreamResponse"),
         "requestBinaryStream(request, " + mediaType(plan) + ", options)",
@@ -165,30 +165,16 @@ final class ServiceWriter {
         Javadoc.present(method.summary()) ? Javadoc.text(method.summary()) + "." : null;
     summary = summary == null ? null : summary.replaceAll("\\.\\.$", ".");
 
-    List<String> signatureHead = pathArguments.stream().map(arg -> "String " + arg).toList();
-    String head = String.join(", ", pathArguments);
     String newParams = params == null ? null : params + ".builder().build()";
 
-    // The short overloads: each forwards to the full one.
-    List<List<String>> overloads = new ArrayList<>();
-    if (params == null) {
-      overloads.add(List.of());
-    } else {
-      if (!plan.paramsRequired()) {
-        overloads.add(List.of());
-        overloads.add(List.of(options + " options"));
-      }
-      overloads.add(List.of(params + " params"));
-    }
-    for (List<String> extra : overloads) {
-      List<String> parameters = new ArrayList<>(signatureHead);
-      parameters.addAll(extra);
+    // The short overloads: each forwards to the full one, which comes last.
+    List<List<String>> overloads = overloads(plan, params, options);
+    for (List<String> parameters : overloads.subList(0, overloads.size() - 1)) {
       List<String> forwarded = new ArrayList<>(pathArguments);
       if (params != null) {
-        forwarded.add(extra.stream().anyMatch(p -> p.endsWith(" params")) ? "params" : newParams);
+        forwarded.add(parameters.contains(params + " params") ? "params" : newParams);
       }
-      forwarded.add(
-          extra.stream().anyMatch(p -> p.endsWith(" options")) ? "options" : options + ".none()");
+      forwarded.add(parameters.contains(options + " options") ? "options" : options + ".none()");
       file.append("\n").append(Javadoc.block("  ", summary));
       file.append("  public " + returns.type() + " " + javaName + "(");
       file.append(String.join(", ", parameters) + ") {\n");
@@ -213,13 +199,8 @@ final class ServiceWriter {
             ? null
             : "Never retried: a lost response may hide a change that already happened.";
     file.append("\n").append(Javadoc.block("  ", nonNull(summary, description, retries), tags));
-    List<String> parameters = new ArrayList<>(signatureHead);
-    if (params != null) {
-      parameters.add(params + " params");
-    }
-    parameters.add(options + " options");
     file.append("  public " + returns.type() + " " + javaName + "(");
-    file.append(String.join(", ", parameters) + ") {\n");
+    file.append(String.join(", ", overloads.get(overloads.size() - 1)) + ") {\n");
     String objects = file.use("java.util.Objects");
     for (String argument : pathArguments) {
       file.append("    " + objects + ".requireNonNull(" + argument + ", \"" + argument + "\");\n");
@@ -230,6 +211,37 @@ final class ServiceWriter {
     file.append("    " + objects + ".requireNonNull(options, \"options\");\n");
     appendRequest(file, plan, null);
     file.append("    return requester." + returns.call() + ";\n  }\n");
+  }
+
+  /**
+   * Every overload of a method, as its parameter declarations, the full one last: path arguments
+   * first, then the params (left out where none are required), then the request options.
+   *
+   * @param params the params class's name, or {@code null} when the method takes none
+   * @param options the request options class's name
+   */
+  static List<List<String>> overloads(Surface.MethodPlan plan, String params, String options) {
+    List<String> head = plan.pathArguments().stream().map(arg -> "String " + arg).toList();
+    List<List<String>> tails = new ArrayList<>();
+    if (params == null) {
+      tails.add(List.of());
+      tails.add(List.of(options + " options"));
+    } else {
+      if (!plan.paramsRequired()) {
+        tails.add(List.of());
+        tails.add(List.of(options + " options"));
+      }
+      tails.add(List.of(params + " params"));
+      tails.add(List.of(params + " params", options + " options"));
+    }
+    return tails.stream()
+        .map(
+            tail -> {
+              List<String> parameters = new ArrayList<>(head);
+              parameters.addAll(tail);
+              return List.copyOf(parameters);
+            })
+        .toList();
   }
 
   /** Writes {@code ApiRequest request = ...;} for the plan, optionally conditional. */

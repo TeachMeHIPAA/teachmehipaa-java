@@ -24,8 +24,9 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
- * Turns {@code openapi/sdk-ir.json} into the model, param and service packages and the client's
- * service accessors. It reads nothing else, and the same IR always gives byte-identical output.
+ * Turns {@code openapi/sdk-ir.json} into the model, param and service packages, the client's
+ * service accessors and the resource reference in {@code docs/reference/}. It reads nothing else,
+ * and the same IR always gives byte-identical output.
  */
 public final class Generator {
   /**
@@ -41,6 +42,9 @@ public final class Generator {
   /** Hand-written apart from the section between the markers, which the generator owns. */
   public static final String CLIENT_FILE = "src/main/java/com/teachmehipaa/TeachMeHipaaClient.java";
 
+  /** The resource reference for partner developers, generated whole. */
+  public static final String REFERENCE_FILE = ReferenceWriter.PATH;
+
   static final String BEGIN =
       "  // The beginning of the section generated from openapi/sdk-ir.json.";
   static final String END = "  // The end of the section generated from openapi/sdk-ir.json.";
@@ -51,7 +55,8 @@ public final class Generator {
       JsonMapper.builder().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
 
   /**
-   * Every generated file, by path relative to {@code root}, formatted with google-java-format.
+   * Every generated file, by path relative to {@code root}: the Java formatted with
+   * google-java-format, and the resource reference.
    *
    * @throws GeneratorException when the IR is invalid or has a shape with no rule here
    */
@@ -83,6 +88,7 @@ public final class Generator {
     }
     rendered.put(
         CLIENT_FILE, format(CLIENT_FILE, client(surface, read(root.resolve(CLIENT_FILE)))));
+    rendered.put(REFERENCE_FILE, new ReferenceWriter(surface).markdown());
     return rendered;
   }
 

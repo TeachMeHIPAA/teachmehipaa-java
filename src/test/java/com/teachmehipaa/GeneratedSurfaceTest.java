@@ -233,6 +233,8 @@ class GeneratedSurfaceTest {
       }
     }
     committed.put(Generator.CLIENT_FILE, Files.readString(ROOT.resolve(Generator.CLIENT_FILE)));
+    committed.put(
+        Generator.REFERENCE_FILE, Files.readString(ROOT.resolve(Generator.REFERENCE_FILE)));
 
     assertEquals(committed.keySet(), fresh.keySet());
     fresh.forEach((path, source) -> assertEquals(committed.get(path), source, path));

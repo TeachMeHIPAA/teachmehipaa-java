@@ -65,6 +65,29 @@ sourceSets {
       runtimeClasspath += main.get().output
     }
   }
+  // Runnable programs for partner developers. `check` compiles them so they keep up with the
+  // library, but nothing runs them: they talk to the real Sandbox.
+  create("examples") {
+    java.srcDir("examples")
+    compileClasspath += main.get().output
+    runtimeClasspath += main.get().output
+  }
+}
+
+configurations.getByName("examplesImplementation") {
+  extendsFrom(configurations.implementation.get())
+}
+
+configurations.getByName("examplesRuntimeOnly") { extendsFrom(configurations.runtimeOnly.get()) }
+
+tasks.check { dependsOn(tasks.named("examplesClasses")) }
+
+tasks.register<JavaExec>("runExample") {
+  group = "application"
+  description =
+      "Runs a program from examples/ against the Sandbox: ./gradlew runExample -Pexample=Quickstart"
+  classpath = sourceSets["examples"].runtimeClasspath
+  mainClass = providers.gradleProperty("example").orElse("Quickstart")
 }
 
 for (suite in listOf("contractTest", "sandboxTest")) {
@@ -79,13 +102,17 @@ for (suite in listOf("contractTest", "sandboxTest")) {
   }
 }
 
-// The README's webhook samples are a Spring controller and a servlet; the README test compiles
-// them against these, and against the library, to prove they still build.
+// The docs' webhook samples include a Spring controller and a servlet; the doc tests compile them
+// against these, and against the library, to prove they still build.
 val readmeFrameworks = configurations.create("readmeFrameworks")
 
 dependencies {
   readmeFrameworks("org.springframework:spring-web:6.2.17")
   readmeFrameworks("jakarta.servlet:jakarta.servlet-api:6.1.0")
+  // The testing guide's samples are JUnit tests. JUnit's classes carry apiguardian annotations,
+  // which javac reports as missing without it.
+  readmeFrameworks("org.junit.jupiter:junit-jupiter-api:5.14.4")
+  readmeFrameworks("org.apiguardian:apiguardian-api:1.1.2")
 }
 
 configurations.testImplementation { extendsFrom(readmeFrameworks) }
@@ -138,26 +165,46 @@ tasks.withType<JavaCompile>().configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
 }
 
-tasks.withType<Javadoc>().configureEach {
+// The Javadoc is the published API reference (GitHub Pages, from the Docs workflow), so any doclint
+// warning fails the build. Missing comments are allowed: generated getters say nothing a name
+// doesn't.
+tasks.javadoc {
+  val overviewFile = layout.projectDirectory.file("src/main/javadoc/overview.html")
+  inputs.file(overviewFile).withPropertyName("overview")
   (options as StandardJavadocDocletOptions).apply {
     encoding = "UTF-8"
+    windowTitle = "TeachMeHIPAA Java Library ${project.version}"
+    docTitle = "TeachMeHIPAA Java Library ${project.version}"
+    overview = overviewFile.asFile.path
     addStringOption("Xdoclint:all,-missing", "-quiet")
+    addBooleanOption("Werror", true)
   }
 }
 
 tasks.test {
   useJUnitPlatform()
   jvmArgs(javacExports)
-  // ReadmeTest type-checks every sample against the library and the frameworks the samples use,
-  // without the test classes, and runs them with these stand-ins for the caller's environment.
+  // The doc tests (ReadmeTest, GuidesTest) type-check every sample in the README and the guides
+  // against the library and the frameworks the samples use, without the test classes, and run them
+  // with these stand-ins for the caller's environment. They also check every relative link.
   val readmeClasspath = sourceSets.main.get().runtimeClasspath + readmeFrameworks
-  inputs.file("README.md").withPropertyName("readme")
+  inputs
+      .files(
+          "README.md",
+          "CONTRIBUTING.md",
+          "CHANGELOG.md",
+          "SECURITY.md",
+          fileTree("docs") { include("**/*.md") },
+          fileTree("examples"),
+      )
+      .withPropertyName("docs")
   jvmArgumentProviders.add(
       CommandLineArgumentProvider { listOf("-Dreadme.classpath=" + readmeClasspath.asPath) }
   )
   environment("TMH_CLIENT_ID", "cli_01JD8Z4N3QX5V7W9Y2B4C6D8EF")
   environment("TMH_CLIENT_SECRET", "tmh_cs_k3Jq9-Zx_8LmN2pR4tV6wY0aB1cD3eF5gH7iJ9kL0mN")
   environment("TMH_WEBHOOK_SECRET", "readme-test-signing-secret")
+  environment("TMH_ACCESS_TOKEN", "eyJhbGciOiJIUzI1NiJ9.static.sig")
 }
 
 tasks.register<Test>("contractTest") {
@@ -184,7 +231,7 @@ tasks.register<Test>("sandboxTest") {
 
 spotless {
   java {
-    target("src/**/*.java", "generator/**/*.java")
+    target("src/**/*.java", "generator/**/*.java", "examples/**/*.java")
     googleJavaFormat("1.28.0")
     removeUnusedImports()
   }

@@ -13,9 +13,21 @@ import java.util.Map;
  * these records.
  */
 record Ir(
-    int irVersion, Source source, List<Resource> resources, List<IrType> types, Events events) {
+    int irVersion,
+    Source source,
+    List<Server> servers,
+    Auth auth,
+    List<Resource> resources,
+    List<IrType> types,
+    Events events) {
 
   record Source(String release, String sha256) {}
+
+  record Server(String environment, String url) {}
+
+  record Auth(List<Scope> scopes) {}
+
+  record Scope(String name, String description) {}
 
   record Resource(List<String> path, List<Method> methods) {}
 
@@ -43,7 +55,13 @@ record Ir(
 
   record Param(String name, String description, boolean required, TypeRef type) {}
 
-  record Security(String kind) {}
+  /**
+   * Who may call a method.
+   *
+   * @param anyOf for a bearer method, the Scope sets that each allow it; an empty set means any
+   *     Access token does
+   */
+  record Security(String kind, List<List<String>> anyOf) {}
 
   record RequestBody(
       String contentType,

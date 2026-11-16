@@ -79,6 +79,10 @@ public final class Generate {
       }
     }
     files.put(Generator.CLIENT_FILE, Generator.read(root.resolve(Generator.CLIENT_FILE)));
+    Path reference = root.resolve(Generator.REFERENCE_FILE);
+    if (Files.exists(reference)) {
+      files.put(Generator.REFERENCE_FILE, Generator.read(reference));
+    }
     return files;
   }
 
