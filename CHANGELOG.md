@@ -27,8 +27,7 @@ Generated from the Developer API document release `trimmed-2026-11-15`.
   ([#2](https://github.com/TeachMeHIPAA/teachmehipaa-java/issues/2)).
 - `docs/reference/code-samples.json`, generated: one compiled and
   fake-API-tested Java snippet per Developer API operation, for the
-  TeachMeHIPAA API reference. The README and guides are rewritten as a Java
-  reference (new: Installation, The client, Compatibility).
+  TeachMeHIPAA API reference.
 - Client credentials authentication with cached, single-flight Access tokens
   renewed 60 s before expiry, and one renewal and replay on a 401.
 - Live and Sandbox Environments, a `baseUrl` override, narrower `scopes`, and
@@ -84,22 +83,15 @@ Generated from the Developer API document release `trimmed-2026-11-15`.
 
 ### Documentation
 
-- Guides in `docs/guides/`: getting started, authentication, errors and
-  retries, pagination and the Event log, webhooks (Spring Boot, servlet and
-  JDK HTTP server handlers), Operations and files, conditional requests,
-  testing, configuration and versioning. Every Java sample in them and in the
-  README is compiled against the library and run against a fake transport by
-  the test suite, which also checks every relative link and anchor.
-- `docs/reference/resources.md`, generated from the SDK IR by
-  `./gradlew generate`: every service and method with its overloads, HTTP
-  route, Scopes, retry, idempotency and conditional behavior, and return
-  type. `generateCheck` keeps it current, and a test checks it against the
-  compiled services.
-- The Javadoc as the API reference, with an overview page, built with doclint
-  and `-Werror` on every build and published to GitHub Pages from `main` by
-  a new Docs workflow.
+- Documentation lives at
+  [docs.teachmehipaa.com/api](https://docs.teachmehipaa.com/api?lang=java),
+  which `docs/reference/code-samples.json` feeds. The README's samples are
+  compiled against the library and run against a fake transport by the test
+  suite, which also checks every relative link and anchor.
+- Javadoc with an overview page, built with doclint and `-Werror` on every
+  build and published as the `-javadoc.jar`.
 - Runnable examples in `examples/`: a quickstart, a roster sync by External
   ID, a webhook endpoint on the JDK's HTTP server and a Certificate export,
   compiled by `check` and run with `./gradlew runExample -Pexample=<Name>`.
-- A shorter README with a pre-release status note that links to the guides,
-  and `docs/README.md`, an index of all documentation.
+- A short README with a pre-release status note that links to the hosted
+  docs, and `docs/README.md`, an index of the repository's own docs.

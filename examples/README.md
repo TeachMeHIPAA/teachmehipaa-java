@@ -22,8 +22,8 @@ export TMH_CLIENT_SECRET=tmh_cs_...
 ./gradlew runExample -Pexample=Quickstart
 ```
 
-In your own project, add the library first (see
-[Installation](../docs/guides/installation.md)) and copy an example in.
+In your own project, add the library first (see the
+[README](../README.md#install)) and copy an example in.
 Each one is a single class with a `main` method and no package.
 
 `WebhookServer` also needs `TMH_WEBHOOK_SECRET`, the Signing secret of a
@@ -33,8 +33,8 @@ send a Test delivery with `webhookSubscriptions().test`.
 
 `WebhookServer` uses the JDK's built-in `com.sun.net.httpserver`, so it runs
 with nothing but the library. With Spring Boot or a servlet container, the
-handler is the same few lines; [Webhooks](../docs/guides/webhooks.md) shows
-both.
+handler is the same few lines; the
+[docs](https://docs.teachmehipaa.com/api?lang=java) show both.
 
 `./gradlew build` compiles every example, so they keep up with the library,
 but never runs them.

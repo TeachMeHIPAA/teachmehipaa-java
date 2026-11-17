@@ -22,7 +22,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -44,58 +43,29 @@ class ReadmeTest extends DocSampleTest {
 
   @Override
   Map<String, Check> checks() {
-    return Map.of("quickstart", this::quickstart, "quickstart-async", this::quickstartAsync);
-  }
-
-  private void quickstartAsync() throws Exception {
-    api.on(TOKEN_ROUTE, Reply.json(tokenJson(ACCESS_TOKEN)))
-        .on(LEARNER_ROUTE, Reply.json(LEARNER_JSON));
-
-    run("quickstart-async");
-
-    assertEquals(List.of("ana@example.com"), printed());
+    return Map.of("quickstart", this::quickstart);
   }
 
   private void quickstart() throws Exception {
     api.on(TOKEN_ROUTE, Reply.json(tokenJson(ACCESS_TOKEN)))
         .on(INTROSPECTION_ROUTE, Reply.json(introspectionJson("\"org_acme\"")))
-        .on(LEARNER_ROUTE, Reply.json(LEARNER_JSON))
-        .on("GET " + ORG + "/learners", page(LEARNER_JSON));
+        .on(LEARNER_ROUTE, Reply.json(LEARNER_JSON));
 
     run("quickstart");
 
-    assertEquals(List.of("Ana Lima in_progress", "ana@example.com"), printed());
+    assertEquals(List.of("Ana Lima in_progress"), printed());
     assertEquals(
         URI.create(SANDBOX_BASE + "/auth/token"), api.requestsTo(TOKEN_ROUTE).get(0).uri());
-    assertEquals(
-        Map.of("status", "in_progress", "limit", "20"),
-        query(api.requestsTo("GET " + ORG + "/learners").get(0)));
-  }
-
-  @Test
-  void sampleIdsAreUniqueAcrossTheReadmeAndTheGuides() {
-    List<Path> docs = new ArrayList<>(docs());
-    docs.addAll(markdownIn("docs/guides"));
-    List<String> ids = samples(docs).stream().map(Sample::id).toList();
-
-    assertEquals(
-        List.of(),
-        ids.stream().filter(id -> ids.indexOf(id) != ids.lastIndexOf(id)).distinct().toList());
   }
 
   static Stream<Path> linkedDocs() {
-    List<Path> docs =
-        new ArrayList<>(
-            List.of(
-                Path.of("README.md"),
-                Path.of("CONTRIBUTING.md"),
-                Path.of("CHANGELOG.md"),
-                Path.of("SECURITY.md"),
-                Path.of("docs/README.md"),
-                Path.of("docs/reference/resources.md"),
-                Path.of("examples/README.md")));
-    docs.addAll(markdownIn("docs/guides"));
-    return docs.stream();
+    return Stream.of(
+        Path.of("README.md"),
+        Path.of("CONTRIBUTING.md"),
+        Path.of("CHANGELOG.md"),
+        Path.of("SECURITY.md"),
+        Path.of("docs/README.md"),
+        Path.of("examples/README.md"));
   }
 
   @ParameterizedTest

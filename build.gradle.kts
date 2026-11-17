@@ -102,21 +102,6 @@ for (suite in listOf("contractTest", "sandboxTest")) {
   }
 }
 
-// The docs' webhook samples include a Spring controller and a servlet; the doc tests compile them
-// against these, and against the library, to prove they still build.
-val readmeFrameworks = configurations.create("readmeFrameworks")
-
-dependencies {
-  readmeFrameworks("org.springframework:spring-web:6.2.17")
-  readmeFrameworks("jakarta.servlet:jakarta.servlet-api:6.1.0")
-  // The testing guide's samples are JUnit tests. JUnit's classes carry apiguardian annotations,
-  // which javac reports as missing without it.
-  readmeFrameworks("org.junit.jupiter:junit-jupiter-api:5.14.4")
-  readmeFrameworks("org.apiguardian:apiguardian-api:1.1.2")
-}
-
-configurations.testImplementation { extendsFrom(readmeFrameworks) }
-
 val generatorImplementation = configurations.getByName("generatorImplementation")
 
 dependencies {
@@ -165,9 +150,8 @@ tasks.withType<JavaCompile>().configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
 }
 
-// The Javadoc is the published API reference (GitHub Pages, from the Docs workflow), so any doclint
-// warning fails the build. Missing comments are allowed: generated getters say nothing a name
-// doesn't.
+// The Javadoc jar ships to Maven Central, so any doclint warning fails the build. Missing comments
+// are allowed: generated getters say nothing a name doesn't.
 tasks.javadoc {
   val overviewFile = layout.projectDirectory.file("src/main/javadoc/overview.html")
   inputs.file(overviewFile).withPropertyName("overview")
@@ -184,10 +168,10 @@ tasks.javadoc {
 tasks.test {
   useJUnitPlatform()
   jvmArgs(javacExports)
-  // The doc tests (ReadmeTest, GuidesTest) type-check every sample in the README and the guides
-  // against the library and the frameworks the samples use, without the test classes, and run them
-  // with these stand-ins for the caller's environment. They also check every relative link.
-  val readmeClasspath = sourceSets.main.get().runtimeClasspath + readmeFrameworks
+  // The doc tests (ReadmeTest, CodeSamplesTest) type-check every sample in the README and
+  // docs/reference/code-samples.json against the library, without the test classes, and run them
+  // with these stand-ins for the caller's environment. ReadmeTest also checks every relative link.
+  val readmeClasspath = sourceSets.main.get().runtimeClasspath
   inputs
       .files(
           "README.md",

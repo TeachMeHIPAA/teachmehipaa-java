@@ -79,11 +79,9 @@ public final class Generate {
       }
     }
     files.put(Generator.CLIENT_FILE, Generator.read(root.resolve(Generator.CLIENT_FILE)));
-    for (String whole : java.util.List.of(Generator.REFERENCE_FILE, Generator.SAMPLES_FILE)) {
-      Path file = root.resolve(whole);
-      if (Files.exists(file)) {
-        files.put(whole, Generator.read(file));
-      }
+    Path samples = root.resolve(Generator.SAMPLES_FILE);
+    if (Files.exists(samples)) {
+      files.put(Generator.SAMPLES_FILE, Generator.read(samples));
     }
     return files;
   }
