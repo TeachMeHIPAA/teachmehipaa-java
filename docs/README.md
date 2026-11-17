@@ -1,41 +1,15 @@
-# teachmehipaa-java documentation
+# Documentation
 
-Reference documentation for `com.teachmehipaa:teachmehipaa-java`, the Java 17+
-client for the TeachMeHIPAA Developer API. A first integration reads
-[Installation](guides/installation.md), then
-[Getting started](guides/getting-started.md).
+The API reference and guides for the TeachMeHIPAA Java library live at
+[docs.teachmehipaa.com/api](https://docs.teachmehipaa.com/api?lang=java).
+The [README](../README.md) covers install and a first call.
 
-## Guides
+## Code samples
 
-Each Java block in the guides is compiled against the library alone and run
-against a fake of the API by `./gradlew test`, so the samples match the
-current code.
-
-| # | Guide | Contents |
-| --- | --- | --- |
-| 1 | [Installation](guides/installation.md) | Requirements, Maven and Gradle declarations, transitive Jackson, building the pre-release from source |
-| 2 | [Getting started](guides/getting-started.md) | Sandbox credentials, the first call, inviting and upserting a Learner, the first `catch` |
-| 3 | [The client](guides/client.md) | Every builder option and default, lifecycle, thread-safety guarantees, `RequestOptions`, `AppInfo`, a custom `HttpClient`, logging |
-| 4 | [Authentication](guides/authentication.md) | Client credentials and the token cache, Scopes, Environments, the Organization binding, `TokenProvider`, public lookups |
-| 5 | [Exceptions and retries](guides/exceptions.md) | Checked versus unchecked, the exception hierarchy, problem details, retry rules, idempotency keys |
-| 6 | [Async with CompletableFuture](guides/async.md) | `…Async` methods, which threads run what, failures, cancellation and `orTimeout`, async pages and Operations |
-| 7 | [Pagination and the Event log](guides/pagination.md) | `Page<T>`, auto-paging iterables and streams, the Event log, `EventTail` |
-| 8 | [Webhooks](guides/webhooks.md) | Subscriptions, signature verification in Spring MVC, Jakarta Servlet and `com.sun.net.httpserver`, Test deliveries |
-| 9 | [Operations and files](guides/operations-and-files.md) | Waiting on and resuming Operations, CSV export and import, streamed PDFs, bulk changes |
-| 10 | [Optimistic concurrency](guides/optimistic-concurrency.md) | ETags, `ifMatch`, merge patches, `retrieveIfModified` |
-| 11 | [Testing](guides/testing.md) | The Sandbox, a fake `HttpTransport`, Prism, webhook handler tests |
-| 12 | [Compatibility](guides/compatibility.md) | Semantic versioning, supported JDKs, `OPENAPI_VERSION`, forward-compatible models |
-
-## API reference
-
-- [Resource reference](reference/resources.md): each service method with its
-  overloads (blocking and async), HTTP route, Scopes, retry, idempotency and
-  conditional behavior. `./gradlew generate` writes it from the SDK IR.
-- [`code-samples.json`](reference/code-samples.json): one Java snippet per
-  Developer API operation, generated alongside it for the TeachMeHIPAA API
-  reference site.
-- [Javadoc](https://teachmehipaa.github.io/teachmehipaa-java/): every public
-  type. `./gradlew javadoc` builds it into `build/docs/javadoc/`.
+[`code-samples.json`](reference/code-samples.json) holds one Java snippet
+per Developer API operation, generated from the SDK IR by
+`./gradlew generate`. The hosted API reference shows them when you pick
+Java.
 
 ## Examples
 
@@ -54,8 +28,8 @@ current code.
 
 Background on how the library is built. Using it requires none of this.
 
-- [CONTRIBUTING.md](../CONTRIBUTING.md): building, the generator, the test
-  suites and how the documentation is checked.
+- [CONTRIBUTING.md](../CONTRIBUTING.md): building, the generator and the
+  test suites.
 - [`adr/`](adr/): architecture decision records, among them
   [the generated surface](adr/0001-generated-surface-from-shared-ir.md),
   [the Organization bound to the client](adr/0003-organization-bound-to-client.md),

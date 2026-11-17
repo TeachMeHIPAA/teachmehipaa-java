@@ -25,8 +25,8 @@ import java.util.stream.Collectors;
 
 /**
  * Turns {@code openapi/sdk-ir.json} into the model, param and service packages, the client's
- * service accessors, and the resource reference and code samples in {@code docs/reference/}. It
- * reads nothing else, and the same IR always gives byte-identical output.
+ * service accessors, and the code samples in {@code docs/reference/}. It reads nothing else, and
+ * the same IR always gives byte-identical output.
  */
 public final class Generator {
   /**
@@ -42,9 +42,6 @@ public final class Generator {
   /** Hand-written apart from the section between the markers, which the generator owns. */
   public static final String CLIENT_FILE = "src/main/java/com/teachmehipaa/TeachMeHipaaClient.java";
 
-  /** The resource reference for partner developers, generated whole. */
-  public static final String REFERENCE_FILE = ReferenceWriter.PATH;
-
   /** One Java snippet per operation, for the monorepo's API reference, generated whole. */
   public static final String SAMPLES_FILE = CodeSampleWriter.PATH;
 
@@ -59,7 +56,7 @@ public final class Generator {
 
   /**
    * Every generated file, by path relative to {@code root}: the Java formatted with
-   * google-java-format, and the resource reference.
+   * google-java-format, and the code samples.
    *
    * @throws GeneratorException when the IR is invalid or has a shape with no rule here
    */
@@ -91,7 +88,6 @@ public final class Generator {
     }
     rendered.put(
         CLIENT_FILE, format(CLIENT_FILE, client(surface, read(root.resolve(CLIENT_FILE)))));
-    rendered.put(REFERENCE_FILE, new ReferenceWriter(surface).markdown());
     rendered.put(SAMPLES_FILE, new CodeSampleWriter(surface).json());
     return rendered;
   }
